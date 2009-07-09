@@ -1,0 +1,11 @@
+[Desktop Entry]
+X-SuSE-translate=true
+Encoding=UTF-8
+Name=Firewall Zone Switcher
+Comment=System Tray applet that allows to switch firewall zones
+Icon=@icondir@/firewall.png
+Exec=@bindir@/fwzsapp
+Terminal=false
+Type=Application
+Categories=Settings;Utility;
+StartupNotify=true
