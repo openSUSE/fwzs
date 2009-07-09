@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.opensuse.zoneswitcher
+Exec=@sbindir@/fwzsd
+User=root
