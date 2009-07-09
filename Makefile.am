@@ -11,6 +11,9 @@ dbusdatadir = @dbusdatadir@
 dbussystemservicedir = $(dbusdatadir)/system-services
 dbussystemservice_DATA = org.opensuse.zoneswitcher.service
 
+dbussystemconfigdir = $(sysconfdir)/dbus-1/system.d
+dbussystemconfig_DATA = org.opensuse.zoneswitcher.conf
+
 do_subst = sed -e 's,[@]sbindir[@],$(sbindir),' \
 	   -e 's,[@]bindir[@],$(bindir),' \
 	   -e 's,[@]icondir[@],$(icondir),'
@@ -35,4 +38,8 @@ fwzsapp.desktop: fwzsapp.desktop.in Makefile
 	@$(do_subst) $(srcdir)/$< > $@
 
 CLEANFILES = $(sbin_SCRIPTS) $(bin_SCRIPTS) $(dbussystemservice_DATA) $(desktopdata_DATA)
-EXTRA_DIST = fwzsd.py fwzsapp.py org.opensuse.zoneswitcher.service.in fwzsapp.desktop.in firewall.png
+EXTRA_DIST = fwzsd.py fwzsapp.py \
+	     org.opensuse.zoneswitcher.service.in \
+	     fwzsapp.desktop.in \
+	     firewall.png \
+	     org.opensuse.zoneswitcher.conf
