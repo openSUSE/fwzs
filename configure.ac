@@ -5,7 +5,7 @@ AC_CONFIG_SRCDIR([fwzsd.py])
 
 AC_PREREQ(2.53)
 AC_CANONICAL_HOST
-AM_INIT_AUTOMAKE([1.6 foreign])
+AM_INIT_AUTOMAKE([1.6 foreign dist-bzip2 no-dist-gzip])
 
 AC_ARG_WITH([dbusdatadir],
 	[AS_HELP_STRING([--with-dbusdatadir],

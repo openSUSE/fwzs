@@ -34,5 +34,5 @@ fwzsapp.desktop: fwzsapp.desktop.in Makefile
 	@echo "creating $@"
 	@$(do_subst) $(srcdir)/$< > $@
 
-CLEANFILES = $(sbin_SCRIPTS)
-EXTRA_DIST = fwzsd.py fwzsapp.py org.opensuse.zoneswitcher.service.in fwzsapp.desktop.in
+CLEANFILES = $(sbin_SCRIPTS) $(bin_SCRIPTS) $(dbussystemservice_DATA) $(desktopdata_DATA)
+EXTRA_DIST = fwzsd.py fwzsapp.py org.opensuse.zoneswitcher.service.in fwzsapp.desktop.in firewall.png
