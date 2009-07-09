@@ -8,4 +8,4 @@ Exec=@bindir@/fwzsapp
 Terminal=false
 Type=Application
 Categories=Settings;Utility;
-StartupNotify=true
+StartupNotify=false
