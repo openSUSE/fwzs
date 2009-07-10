@@ -55,8 +55,12 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
     IFACEOVERRIDEDIR = '/var/run/SuSEfirewall2/override/interfaces'
 
     def Zones(self):
-	zones = os.listdir(self.STATUSDIR + '/zones')
 	ret = {}
+	try:
+		zones = os.listdir(self.STATUSDIR + '/zones')
+	except:
+		return ret
+
 	for z in zones:
 	    if z in self.ZONES:
 		ret[z] = self.ZONES[z]
@@ -66,8 +70,12 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
         return ret
 
     def Interfaces(self):
-	ifaces = os.listdir(self.STATUSDIR + '/interfaces')
 	ret = {}
+	try:
+		ifaces = os.listdir(self.STATUSDIR + '/interfaces')
+	except:
+		return ret
+
 	for i in ifaces:
 	    ret[i] = self._get_zone(i)
         return ret

@@ -110,34 +110,58 @@ class StatusIcon:
 	    icon.set_from_stock(gtk.STOCK_DIALOG_ERROR)
 	
 	else:
-	    item = gtk.MenuItem("Firewall interfaces")
-	    item.set_sensitive(False)
-	    item.show()
-	    menu.append(item)
-
 	    zones = self.iface.Zones()
-	    ifaces = self.iface.Interfaces()
 
-	    for i in ifaces:
-		item = gtk.MenuItem(i)
+	    if zones:
+		ifaces = self.iface.Interfaces()
+
+		if ifaces:
+		    item = gtk.MenuItem("Firewall interfaces")
+		    item.set_sensitive(False)
+		    item.show()
+		    menu.append(item)
+
+		    for i in ifaces:
+			item = gtk.MenuItem(i)
+			item.show()
+			menu.append(item)
+			group = None
+			submenu = gtk.Menu()
+			for z in zones:
+			    txt = zones[z]
+			    if not txt:
+				txt = z
+			    zitem = gtk.RadioMenuItem(group, txt)
+			    group = zitem
+			    if z == ifaces[i]:
+				zitem.set_active(True)
+			    zitem.connect('toggled', lambda *args: self._change_zone(*args), i, z)
+			    zitem.show()
+			    submenu.append(zitem)
+			item.set_submenu(submenu)
+
+			icon.set_from_file(ICON)
+
+		else:
+		    item = gtk.MenuItem("No interfaces found.")
+		    item.set_sensitive(False)
+		    item.show()
+		    menu.append(item)
+
+	    else:
+		item = gtk.MenuItem("No zones found.\nFirewall not running or fwzs not supported?")
+		item.set_sensitive(False)
 		item.show()
 		menu.append(item)
-		group = None
-		submenu = gtk.Menu()
-		for z in zones:
-		    txt = zones[z]
-		    if not txt:
-			txt = z
-		    zitem = gtk.RadioMenuItem(group, txt)
-		    group = zitem
-		    if z == ifaces[i]:
-			zitem.set_active(True)
-		    zitem.connect('toggled', lambda *args: self._change_zone(*args), i, z)
-		    zitem.show()
-		    submenu.append(zitem)
-		item.set_submenu(submenu)
 
-		icon.set_from_file(ICON)
+	item = gtk.MenuItem("Run Firewall")
+	item.connect('activate', lambda *args: self.iface.Run())
+	item.show()
+	menu.append(item)
+
+	item = gtk.SeparatorMenuItem()
+	item.show()
+	menu.append(item)
 
 	item = gtk.MenuItem("Quit")
 	item.connect('activate', lambda *args: gtk.main_quit())
@@ -152,3 +176,5 @@ if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     icon = StatusIcon();
     gtk.main()
+
+# vim: sw=4 ts=8 noet
