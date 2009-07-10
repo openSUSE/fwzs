@@ -1,0 +1,24 @@
+Firewall Zone Switcher consist of a DBus service and a system
+tray applet that lets the user switch firewall zones of network
+interfaces.
+
+So you got that shiny new Netbook, installed Linux on it and carry
+it along everywhere you go. The default enabled Firewall blocks
+incoming traffic so you feel safe when connecting to that anonymous
+WiFi network at your favorite fastfood restaurant. Unfortunately the
+very same Firewall becomes quite annoying at home where it prevents
+your system from discovering printers or blocks ssh. So you have the
+choice of either opening the ports permanently or having to use sudo
+to enable or disable the Firewall. Well, not anymore with Firewall
+Zone Switcher! With that little applet you can now switch the zone
+of your network interface to 'internal' with only two mouse clicks
+when you are at home. In an untrusted Network you just set the zone
+to 'external'. And if you need some custom configuration you could
+set the zone 'dmz' to have some open some ports or create a custom
+zone.
+
+Firewall Zone Switcher is *not* meant to be some kind of 'Personal
+Firewall' that confuses the user with all kinds of low level stuff.
+It's neither a Firewall configuration tool. That job is still left
+to Admin tools like YaST. Firewall Zone Switcher settings are
+temporary and are reset to the system defaults on reboot.
