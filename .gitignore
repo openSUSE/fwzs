@@ -13,3 +13,5 @@ fwzsd.service
 install-sh
 missing
 .*.swp
+org.opensuse.zoneswitcher.service
+fwzsapp.desktop
