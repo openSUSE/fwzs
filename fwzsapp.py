@@ -81,13 +81,30 @@ class StatusIcon:
 
 	return self.iface
 
+    def _error_dialog(self, msg):
+	d = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, msg)
+	d.set_title("Firewall Error")
+	d.run()
+	d.destroy()
 
     def _change_zone(self, item, iface, zone):
 	if not item.get_active():
 	    return
 
-	self.iface.setZone(iface, zone)
-	self.iface.Run()
+	try:
+	    self.iface.setZone(iface, zone)
+	except Exception, e:
+	    self._error_dialog(str(e))
+	    return
+
+	self._run_firewall()
+
+    def _run_firewall(self):
+	try:
+	    return self.iface.Run()
+	except Exception, e:
+	    self._error_dialog(str(e))
+	    return False
 
     def show_menu(self, icon, event_button, event_time):
 
@@ -155,7 +172,7 @@ class StatusIcon:
 		menu.append(item)
 
 	item = gtk.MenuItem("Run Firewall")
-	item.connect('activate', lambda *args: self.iface.Run())
+	item.connect('activate', lambda *args: self._run_firewall())
 	item.show()
 	menu.append(item)
 

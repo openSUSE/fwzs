@@ -54,14 +54,22 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
     STATUSDIR = '/var/run/SuSEfirewall2/status'
     IFACEOVERRIDEDIR = '/var/run/SuSEfirewall2/override/interfaces'
 
+    def _listzones(self):
+	try:
+	    return os.listdir(self.STATUSDIR + '/zones')
+	except:
+	    return []
+
+    def _listiterfaces(self):
+	try:
+	    return os.listdir(self.STATUSDIR + '/interfaces')
+	except:
+	    return []
+
     def Zones(self):
 	ret = {}
-	try:
-		zones = os.listdir(self.STATUSDIR + '/zones')
-	except:
-		return ret
 
-	for z in zones:
+	for z in self._listzones():
 	    if z in self.ZONES:
 		ret[z] = self.ZONES[z]
 	    else:
@@ -71,12 +79,8 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     def Interfaces(self):
 	ret = {}
-	try:
-		ifaces = os.listdir(self.STATUSDIR + '/interfaces')
-	except:
-		return ret
 
-	for i in ifaces:
+	for i in self._listiterfaces():
 	    ret[i] = self._get_zone(i)
         return ret
 
@@ -86,10 +90,12 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	    return z[:len(z)-1]
 
     def setZone(self, interface, zone):
-	if not os.access(self.STATUSDIR+'/zones/'+zone, os.F_OK):
-	    raise FirewallException
-	if not os.access(self.STATUSDIR+'/interfaces/'+interface, os.F_OK):
-	    raise FirewallException
+	# check user supplied strings
+	if not interface in self._listiterfaces():
+	    raise FirewallException("specified interface is invalid")
+	if not zone in self._listzones():
+	    raise FirewallException("specified zone is invalid")
+
 	dir = self.IFACEOVERRIDEDIR+'/'+interface
 	if not os.access(dir, os.F_OK):
 	    os.makedirs(dir)
@@ -99,7 +105,11 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	return True
 
     def Run(self):
-	return subprocess.call(['/sbin/SuSEfirewall2']) == 0
+	try:
+	    if(subprocess.call(['/sbin/SuSEfirewall2']) != 0):
+		raise FirewallException("SuSEfirewall2 failed")
+	except:
+	    raise FirewallException("can't run SuSEfirewall2")
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -110,3 +120,5 @@ if __name__ == '__main__':
 
     mainloop = gobject.MainLoop()
     mainloop.run()
+
+# vim: sw=4 ts=8 noet
