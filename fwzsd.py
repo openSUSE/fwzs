@@ -61,6 +61,15 @@ class ZoneSwitcher(dbus.service.Object):
 	Return True|False"""
 	raise FirewallException("not implemented")
 
+    @dbus.service.method(interface,
+                         in_signature='', out_signature='b')
+    def Status(self):
+	"""Status of backend
+	Return running: True off:False
+	exception on error"""
+	raise FirewallException("not implemented")
+
+
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     ZONES = {
@@ -103,9 +112,12 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
         return ret
 
     def _get_zone(self, interface):
+	try:
 	    f = open(self.STATUSDIR+'/interfaces/'+interface+'/zone')
 	    z = f.readline()
 	    return z[:len(z)-1]
+	except:
+	    return ""
 
     def setZone(self, interface, zone):
 	# check user supplied strings
@@ -128,6 +140,14 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 		raise FirewallException("SuSEfirewall2 failed")
 	except:
 	    raise FirewallException("can't run SuSEfirewall2")
+
+    def Status(self):
+	try:
+	    if(subprocess.call(['/etc/init.d/SuSEfirewall2_setup', 'status']) == 0):
+		return True
+	    return False
+	except:
+	    raise FirewallException("SuSEfirewall2 status unknown")
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)

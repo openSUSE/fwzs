@@ -27,16 +27,19 @@ from traceback import print_exc
 import dbus
 import dbus.mainloop.glib
 
-ICON = ICONDIR + '/firewall.png'
+icon_green = ICONDIR + '/firewall.png'
+icon_yellow = ICONDIR + '/firewall_y.png'
+icon_red = ICONDIR + '/firewall_x.png'
+icon_grey = ICONDIR + '/firewall_g.png'
 
 class StatusIcon:
 
     def __init__(self, parent=None):
 	self.bus = self.obj = self.iface = None
-	self.getzsiface()
-	self.icon = gtk.status_icon_new_from_file(ICON)
+	self.icon = gtk.status_icon_new_from_file(icon_grey)
 	self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
-	self.icon.connect('activate', lambda *args: self.getzsiface())
+	self.icon.connect('activate', lambda *args: self.check_status())
+	self.check_status()
 
     def nameowner_changed_handler(self, name, old, new):
 	if name != 'org.opensuse.zoneswitcher':
@@ -44,13 +47,12 @@ class StatusIcon:
 	
 	if(not new and old):
 	    self.obj = self.iface = None
-	    self.icon.set_from_stock(gtk.STOCK_DIALOG_ERROR)
+	    self.icon.set_from_file(icon_grey)
 	    print "service exited"
 
 	elif(not old and new):
 	    print "service started"
-	    self.getzsiface()
-	    self.icon.set_from_file(ICON)
+	    self.check_status()
 
     def catchall_handler(self, *args, **kwargs):
 	print "args: ", args
@@ -58,8 +60,17 @@ class StatusIcon:
 
     def bus_disconnected(self):
 	print "bus disconnected"
-	self.bus = self.obj = self.iface = None
-	self.icon.set_from_stock(gtk.STOCK_DIALOG_ERROR)
+	self.icon.set_from_file(icon_grey)
+
+    def check_status(self):
+	try: 
+	    self.getzsiface()
+	    if self.iface.Status():
+		self.icon.set_from_file(icon_green)
+	    else:
+		self.icon.set_from_file(icon_red)
+	except:
+		self.icon.set_from_file(icon_grey)
 
     def getzsiface(self):
 	if(not self.bus):
@@ -81,6 +92,7 @@ class StatusIcon:
 	    except dbus.DBusException, e:
 		print "can't connect to bus:", str(e)
 		self.bus = self.obj = self.iface = None
+		self.icon.set_from_file(icon_grey)
 		return None
 
 	if(not (self.obj and self.iface)):
@@ -118,15 +130,25 @@ class StatusIcon:
 	self._run_firewall()
 
     def _run_firewall(self):
+	ret = False
 	try:
-	    return self.iface.Run()
+	    ret = self.iface.Run()
 	except Exception, e:
 	    self._error_dialog(str(e))
-	    return False
+
+	self.check_status()
+	return ret
+
+    def _menu_error(self, menu, txt):
+	item = gtk.MenuItem(txt)
+	item.set_sensitive(False)
+	item.show()
+	menu.append(item)
 
     def show_menu(self, icon, event_button, event_time):
 
 	menu = gtk.Menu()
+	self.check_status()
 
 	if(not self.bus):
 	    item = gtk.MenuItem("DBus not running")
@@ -134,15 +156,13 @@ class StatusIcon:
 	    item.show()
 	    menu.append(item)
 
-	    icon.set_from_stock(gtk.STOCK_DIALOG_ERROR)
+	    self.icon.set_from_file(icon_grey)
 
 	elif(not self.getzsiface()):
 	    item = gtk.MenuItem("zoneswitcher service not running")
 	    item.set_sensitive(False)
 	    item.show()
 	    menu.append(item)
-
-	    icon.set_from_stock(gtk.STOCK_DIALOG_ERROR)
 	
 	else:
 	    zones = self.iface.Zones()
@@ -175,8 +195,6 @@ class StatusIcon:
 			    submenu.append(zitem)
 			item.set_submenu(submenu)
 
-			icon.set_from_file(ICON)
-
 		else:
 		    item = gtk.MenuItem("No interfaces found.")
 		    item.set_sensitive(False)
@@ -184,15 +202,12 @@ class StatusIcon:
 		    menu.append(item)
 
 	    else:
-		item = gtk.MenuItem("No zones found.\nFirewall not running or fwzs not supported?")
-		item.set_sensitive(False)
-		item.show()
-		menu.append(item)
+		self._menu_error(menu, "No zones found.\nFirewall not running or fwzs not supported?")
 
-	item = gtk.MenuItem("Run Firewall")
-	item.connect('activate', lambda *args: self._run_firewall())
-	item.show()
-	menu.append(item)
+	    item = gtk.MenuItem("Run Firewall")
+	    item.connect('activate', lambda *args: self._run_firewall())
+	    item.show()
+	    menu.append(item)
 
 	item = gtk.SeparatorMenuItem()
 	item.show()
