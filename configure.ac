@@ -17,5 +17,6 @@ AC_SUBST(dbusdatadir)
 
 AC_CONFIG_FILES([
 	Makefile
+	po/Makefile
 ])
 AC_OUTPUT

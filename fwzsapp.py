@@ -28,6 +28,9 @@ from os import getpid
 import dbus
 import dbus.mainloop.glib
 
+import gettext
+gettext.install('fwzsapp')
+
 icon_green = ICONDIR + '/firewall.png'
 icon_yellow = ICONDIR + '/firewall_y.png'
 icon_red = ICONDIR + '/firewall_x.png'
@@ -41,10 +44,10 @@ class ChangeZoneDialog:
 	zones = app.iface.Zones()
 	ifaces = app.iface.Interfaces()
 	if not zones or not ifaces:
-	    app.error_dialog("Can't get list of interfaces or zones")
+	    app.error_dialog(_("Can't get list of interfaces or zones"))
 	    return
 
-	dialog = gtk.Dialog("Choose Zone for %s" % iface, parent, 0, (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+	dialog = gtk.Dialog(_("Choose Zone for %s") % iface, parent, 0, (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
 	vbox = dialog.get_child()
 	group = None
 	for z in zones:
@@ -139,7 +142,7 @@ class StatusIcon:
 	self.app.check_status()
 
 	if(not self.app.getzsiface()):
-	    item = gtk.MenuItem("zoneswitcher service not running")
+	    item = gtk.MenuItem(_("zoneswitcher service not running"))
 	    item.set_sensitive(False)
 	    item.show()
 	    menu.append(item)
@@ -151,7 +154,7 @@ class StatusIcon:
 		ifaces = self.app.iface.Interfaces()
 
 		if ifaces:
-		    item = gtk.MenuItem("Firewall interfaces")
+		    item = gtk.MenuItem(_("Firewall interfaces"))
 		    item.set_sensitive(False)
 		    item.show()
 		    menu.append(item)
@@ -176,15 +179,15 @@ class StatusIcon:
 			item.set_submenu(submenu)
 
 		else:
-		    item = gtk.MenuItem("No interfaces found.")
+		    item = gtk.MenuItem(_("No interfaces found."))
 		    item.set_sensitive(False)
 		    item.show()
 		    menu.append(item)
 
 	    else:
-		self._menu_error(menu, "No zones found.\nFirewall not running or fwzs not supported?")
+		self._menu_error(menu, _("No zones found.\nFirewall not running or fwzs not supported?"))
 
-	    item = gtk.MenuItem("Run Firewall")
+	    item = gtk.MenuItem(_("Run Firewall"))
 	    item.connect('activate', lambda *args: self.app.run_firewall())
 	    item.show()
 	    menu.append(item)
@@ -193,7 +196,7 @@ class StatusIcon:
 	item.show()
 	menu.append(item)
 
-	item = gtk.MenuItem("Quit")
+	item = gtk.MenuItem(_("Quit"))
 	item.connect('activate', lambda *args: gtk.main_quit())
 	item.show()
 	menu.append(item)
@@ -211,7 +214,7 @@ class OverviewDialog:
 	self.buttonvbox = None
 	if app.icon.isshown():
 	    closebutton = gtk.STOCK_CLOSE
-	dialog = gtk.Dialog("Firewall Zone Switcher", None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
+	dialog = gtk.Dialog(_("Firewall Zone Switcher"), None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
 	dialog.set_default_size(400, 250)
 
 	dialog.connect('response', lambda dialog, id: self.settings_dialog_response(id))
@@ -234,7 +237,7 @@ class OverviewDialog:
 	    vbox.pack_start(w)
 
 	elif(not self.app.getzsiface()):
-	    w = gtk.Label("zoneswitcher service not running")
+	    w = gtk.Label(_("zoneswitcher service not running"))
 	    vbox.pack_start(w)
 	else:
 	    zones = self.app.iface.Zones()
@@ -292,10 +295,8 @@ class fwzsApp:
 	if(not new and old):
 	    self.obj = self.iface = None
 	    self.icon.grey()
-	    print "service exited"
 
 	elif(not old and new):
-	    print "service started"
 	    self.check_status()
 
     def catchall_handler(self, *args, **kwargs):
@@ -359,7 +360,7 @@ class fwzsApp:
 
 	return self.iface
 
-    def error_dialog(self, msg, title="Firewall Error"):
+    def error_dialog(self, msg, title=_("Firewall Error")):
 	d = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, msg)
 	d.set_title(title)
 	d.run()
@@ -417,7 +418,7 @@ class fwzsApp:
 	    ok = agent.ObtainAuthorization(action, dbus.UInt32(0), dbus.UInt32(getpid()));
 	except dbus.DBusException, e:
 	    if e.get_dbus_name() == 'org.freedesktop.DBus.Error.ServiceUnknown':
-		self.error_dialog("The PolicyKit Authentication Agent is not available.\nTry installing 'PolicyKit-gnome'.")
+		self.error_dialog(_("The PolicyKit Authentication Agent is not available.\nTry installing 'PolicyKit-gnome'."))
 	    else:
 		raise
 	return ok

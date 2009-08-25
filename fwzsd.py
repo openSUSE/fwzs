@@ -27,6 +27,10 @@ import dbus.mainloop.glib
 import os
 import subprocess
 
+import gettext
+
+def N_(x): return x
+
 class FirewallException(dbus.DBusException):
     _dbus_error_name = 'org.opensuse.zoneswitcher.FirewallException'
 
@@ -76,9 +80,9 @@ class ZoneSwitcher(dbus.service.Object):
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     ZONES = {
-	'int': 'Trusted Network',
-	'dmz': 'Foreign Network',
-	'ext': 'Internet',
+	'int': N_('Trusted Network'),
+	'dmz': N_('Foreign Network'),
+	'ext': N_('Internet'),
     }
 
     STATUSDIR = '/var/run/SuSEfirewall2/status'

@@ -47,3 +47,5 @@ EXTRA_DIST = fwzsd.py fwzsapp.py \
 	     firewall.png \
 	     org.opensuse.zoneswitcher.policy \
 	     org.opensuse.zoneswitcher.conf
+
+SUBDIRS = po
