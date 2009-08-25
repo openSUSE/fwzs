@@ -23,6 +23,7 @@ ICONDIR = '.' # +++automake+++
 import gtk
 import sys
 from traceback import print_exc
+from os import getpid
 
 import dbus
 import dbus.mainloop.glib
@@ -34,12 +35,50 @@ icon_grey = ICONDIR + '/firewall_g.png'
 
 class StatusIcon:
 
+    def __init__(self, parent):
+	self.icon = None
+	self.parent = parent
+	self.iconfile = icon_grey
+
+    def show(self):
+	self.icon = gtk.status_icon_new_from_file(icon_grey)
+	self.icon.connect('popup-menu', lambda i, eb, et: self.parent.show_menu(i, eb, et))
+#	self.icon.connect('activate', lambda *args: self.parent.show_settings())
+	self._set_icon()
+
+    def hide(self):
+	# TODO
+	self.icon = None
+
+    def _set_icon(self):
+	if self.icon:
+	    self.icon.set_from_file(self.iconfile)
+
+    def grey(self):
+	self.iconfile = icon_grey
+	self._set_icon()
+
+    def green(self):
+	self.iconfile = icon_green
+	self._set_icon()
+
+    def red(self):
+	self.iconfile = icon_red
+	self._set_icon()
+
+    def yellow(self):
+	self.iconfile = icon_yellow
+	self._set_icon()
+
+
+class Fwzsapp:
+
     def __init__(self, parent=None):
 	self.bus = self.obj = self.iface = None
-	self.icon = gtk.status_icon_new_from_file(icon_grey)
-	self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
-	self.icon.connect('activate', lambda *args: self.check_status())
+	self.icon = StatusIcon(self)
 	self.check_status()
+	self.dialog = None
+	self.icon.show()
 
     def nameowner_changed_handler(self, name, old, new):
 	if name != 'org.opensuse.zoneswitcher':
@@ -47,7 +86,7 @@ class StatusIcon:
 	
 	if(not new and old):
 	    self.obj = self.iface = None
-	    self.icon.set_from_file(icon_grey)
+	    self.icon.grey()
 	    print "service exited"
 
 	elif(not old and new):
@@ -60,17 +99,21 @@ class StatusIcon:
 
     def bus_disconnected(self):
 	print "bus disconnected"
-	self.icon.set_from_file(icon_grey)
+	self.icon.grey()
 
     def check_status(self):
 	try: 
 	    self.getzsiface()
-	    if self.iface.Status():
-		self.icon.set_from_file(icon_green)
-	    else:
-		self.icon.set_from_file(icon_red)
+	    try: 
+		if self.iface.Status():
+		    self.icon.green()
+		else:
+		    self.icon.red()
+	    except Exception, e:
+		print e
+		self.icon.grey()
 	except:
-		self.icon.set_from_file(icon_grey)
+		self.icon.grey()
 
     def getzsiface(self):
 	if(not self.bus):
@@ -92,7 +135,7 @@ class StatusIcon:
 	    except dbus.DBusException, e:
 		print "can't connect to bus:", str(e)
 		self.bus = self.obj = self.iface = None
-		self.icon.set_from_file(icon_grey)
+		self.icon.grey()
 		return None
 
 	if(not (self.obj and self.iface)):
@@ -111,9 +154,9 @@ class StatusIcon:
 
 	return self.iface
 
-    def _error_dialog(self, msg):
+    def _error_dialog(self, msg, title="Firewall Error"):
 	d = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, msg)
-	d.set_title("Firewall Error")
+	d.set_title(title)
 	d.run()
 	d.destroy()
 
@@ -121,20 +164,37 @@ class StatusIcon:
 	if not item.get_active():
 	    return
 
-	try:
-	    self.iface.setZone(iface, zone)
-	except Exception, e:
-	    self._error_dialog(str(e))
-	    return
-
-	self._run_firewall()
+	repeat = True
+	while repeat:
+	    repeat = False
+	    try:
+		self.iface.setZone(iface, zone)
+		self._run_firewall()
+	    except dbus.DBusException, e:
+		if e.get_dbus_name() == 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException':
+		    if self.polkitauth(Exception.__str__(e)):
+			repeat = True
+		else:
+		    self._error_dialog(str(e))
+	    except Exception, e:
+		self._error_dialog(str(e))
+		return
 
     def _run_firewall(self):
 	ret = False
-	try:
-	    ret = self.iface.Run()
-	except Exception, e:
-	    self._error_dialog(str(e))
+	repeat = True
+	while repeat:
+	    repeat = False
+	    try:
+		ret = self.iface.Run()
+	    except dbus.DBusException, e:
+		if e.get_dbus_name() == 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException':
+		    if self.polkitauth(Exception.__str__(e)):
+			repeat = True
+		else:
+		    self._error_dialog(str(e))
+	    except Exception, e:
+		self._error_dialog(str(e))
 
 	self.check_status()
 	return ret
@@ -156,7 +216,7 @@ class StatusIcon:
 	    item.show()
 	    menu.append(item)
 
-	    self.icon.set_from_file(icon_grey)
+	    self.icon.grey()
 
 	elif(not self.getzsiface()):
 	    item = gtk.MenuItem("zoneswitcher service not running")
@@ -222,9 +282,36 @@ class StatusIcon:
 	    gtk.status_icon_position_menu, event_button,
 	    event_time, icon)
 
+    def show_settings(self):
+	if self.dialog:
+	    return
+	self.dialog = gtk.Dialog("Firewall Zone Switcher", None, 0, ( gtk.STOCK_OK, gtk.RESPONSE_ACCEPT ))
+	vbox = self.dialog.get_child()
+	w = gtk.CheckButton("autostart")
+	w.show()
+	vbox.pack_end(w)
+	self.dialog.show()
+	self.dialog.connect('response', lambda *args: self.settings_response())
+
+    def settings_response(self):
+	self.dialog.destroy()
+	self.dialog = None
+
+    def polkitauth(self, action):
+	ok = False
+	try:
+	    agent = dbus.SessionBus().get_object("org.freedesktop.PolicyKit.AuthenticationAgent", "/")
+	    ok = agent.ObtainAuthorization(action, dbus.UInt32(0), dbus.UInt32(getpid()));
+	except dbus.DBusException, e:
+	    if e.get_dbus_name() == 'org.freedesktop.DBus.Error.ServiceUnknown':
+		self._error_dialog("The PolicyKit Authentication Agent is not available.\nTry installing 'PolicyKit-gnome'.")
+	    else:
+		raise
+	return ok
+
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    icon = StatusIcon();
+    app = Fwzsapp();
     gtk.main()
 
 # vim: sw=4 ts=8 noet

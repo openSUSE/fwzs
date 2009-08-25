@@ -14,6 +14,9 @@ dbussystemservice_DATA = org.opensuse.zoneswitcher.service
 dbussystemconfigdir = $(sysconfdir)/dbus-1/system.d
 dbussystemconfig_DATA = org.opensuse.zoneswitcher.conf
 
+policydir = $(datadir)/PolicyKit/policy
+policy_DATA = org.opensuse.zoneswitcher.policy
+
 do_subst = sed -e 's,[@]sbindir[@],$(sbindir),' \
 	   -e 's,[@]bindir[@],$(bindir),' \
 	   -e 's,[@]icondir[@],$(icondir),'
@@ -42,4 +45,5 @@ EXTRA_DIST = fwzsd.py fwzsapp.py \
 	     org.opensuse.zoneswitcher.service.in \
 	     fwzsapp.desktop.in \
 	     firewall.png \
+	     org.opensuse.zoneswitcher.policy \
 	     org.opensuse.zoneswitcher.conf

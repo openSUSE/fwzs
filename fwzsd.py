@@ -30,40 +30,43 @@ import subprocess
 class FirewallException(dbus.DBusException):
     _dbus_error_name = 'org.opensuse.zoneswitcher.FirewallException'
 
+class FirewallNotPrivilegedException(dbus.DBusException):
+    _dbus_error_name = 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException'
+
 class ZoneSwitcher(dbus.service.Object):
     """Base class for zone switcher implementation"""
 
     interface = "org.opensuse.zoneswitcher"
 
     @dbus.service.method(interface,
-                         in_signature='', out_signature='a{ss}')
-    def Zones(self):
+                         in_signature='', out_signature='a{ss}', sender_keyword='sender')
+    def Zones(self, sender=None):
 	"""Return {"ZONE": "human readable name", ... }"""
 	raise FirewallException("not implemented")
 
     @dbus.service.method(interface,
-                         in_signature='', out_signature='a{ss}')
-    def Interfaces(self):
+                         in_signature='', out_signature='a{ss}', sender_keyword='sender')
+    def Interfaces(self, sender=None):
 	"""Return {"INTERFACENAME": "ZONE", ... }"""
 	raise FirewallException("not implemented")
 
     @dbus.service.method(interface,
-                         in_signature='ss', out_signature='b')
-    def setZone(self, interface, zone):
+                         in_signature='ss', out_signature='b', sender_keyword='sender')
+    def setZone(self, interface, zone, sender=None):
 	"""Put the specified interface in the specified zone on next Firewall run
 	Return True|False"""
 	raise FirewallException("not implemented")
 
     @dbus.service.method(interface,
-                         in_signature='', out_signature='b')
-    def Run(self):
+                         in_signature='', out_signature='b', sender_keyword='sender')
+    def Run(self, sender=None):
 	"""Run the Firewall to apply settings.
 	Return True|False"""
 	raise FirewallException("not implemented")
 
     @dbus.service.method(interface,
-                         in_signature='', out_signature='b')
-    def Status(self):
+                         in_signature='', out_signature='b', sender_keyword='sender')
+    def Status(self, sender=None):
 	"""Status of backend
 	Return running: True off:False
 	exception on error"""
@@ -93,7 +96,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	except:
 	    return []
 
-    def Zones(self):
+    def Zones(self, sender=None):
 	ret = {}
 
 	for z in self._listzones():
@@ -104,7 +107,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
         return ret
 
-    def Interfaces(self):
+    def Interfaces(self, sender=None):
 	ret = {}
 
 	for i in self._listiterfaces():
@@ -119,7 +122,8 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	except:
 	    return ""
 
-    def setZone(self, interface, zone):
+    def setZone(self, interface, zone, sender=None):
+	self.check_polkit(sender)
 	# check user supplied strings
 	if not interface in self._listiterfaces():
 	    raise FirewallException("specified interface is invalid")
@@ -134,20 +138,33 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	f.close()
 	return True
 
-    def Run(self):
+    def Run(self, sender=None):
+	self.check_polkit(sender)
 	try:
 	    if(subprocess.call(['/sbin/SuSEfirewall2']) != 0):
 		raise FirewallException("SuSEfirewall2 failed")
 	except:
 	    raise FirewallException("can't run SuSEfirewall2")
 
-    def Status(self):
+    def Status(self, sender=None):
 	try:
 	    if(subprocess.call(['/etc/init.d/SuSEfirewall2_setup', 'status']) == 0):
 		return True
 	    return False
 	except:
 	    raise FirewallException("SuSEfirewall2 status unknown")
+
+    def check_polkit(self, sender, action = "org.opensuse.zoneswitcher.control"):
+	try:
+	    pko = self._connection.get_object("org.freedesktop.PolicyKit", "/")
+	    pki = dbus.Interface(pko, "org.freedesktop.PolicyKit")
+	    result = pki.IsSystemBusNameAuthorized(action, sender, True)
+	    if result and result == "yes":
+		return True
+	except Exception, e:
+	    raise e
+
+	raise FirewallNotPrivilegedException(action)
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
