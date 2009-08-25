@@ -44,7 +44,7 @@ class ChangeZoneDialog:
 	    app.error_dialog("Can't get list of interfaces or zones")
 	    return
 
-	dialog = gtk.Dialog("Choose Zone", parent, 0, (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+	dialog = gtk.Dialog("Choose Zone for %s" % iface, parent, 0, (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
 	vbox = dialog.get_child()
 	group = None
 	for z in zones:
@@ -91,6 +91,11 @@ class StatusIcon:
 	self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
 	self.icon.connect('activate', lambda *args: self.app.toggle_settings_dialog())
 	self._set_icon()
+
+    def isshown(self):
+	if self.icon:
+	    return True
+	return False
 
     def hide(self):
 	# TODO
@@ -203,26 +208,39 @@ class OverviewDialog:
 
 	self.app = app
 	closebutton = gtk.STOCK_QUIT
-	if app.icon:
+	self.buttonvbox = None
+	if app.icon.isshown():
 	    closebutton = gtk.STOCK_CLOSE
 	dialog = gtk.Dialog("Firewall Zone Switcher", None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
 	dialog.set_default_size(400, 250)
-	vbox = dialog.get_child()
 
-	app.check_status()
+	dialog.connect('response', lambda dialog, id: self.settings_dialog_response(id))
+	self.dialog = dialog
 
-	if(not app.bus):
+	self.set_contents()
+
+	dialog.show()
+
+    def set_contents(self, dialog = None):
+
+	if not dialog:
+	    dialog = self.dialog
+
+	vbox = gtk.VBox()
+	self.app.check_status()
+
+	if(not self.app.bus):
 	    w = gtk.Label("DBus not running")
 	    vbox.pack_start(w)
 
-	elif(not app.getzsiface()):
+	elif(not self.app.getzsiface()):
 	    w = gtk.Label("zoneswitcher service not running")
 	    vbox.pack_start(w)
 	else:
-	    zones = app.iface.Zones()
+	    zones = self.app.iface.Zones()
 
 	    if zones:
-		ifaces = app.iface.Interfaces()
+		ifaces = self.app.iface.Interfaces()
 
 		if ifaces:
 		    for i in ifaces:
@@ -234,22 +252,25 @@ class OverviewDialog:
 			    z = '?'
 			txt = '%s - %s' % (i, z)
 			w = gtk.Button(txt)
-			w.connect('clicked', lambda button: ChangeZoneDialog(dialog, app, str(i)))
+			w.connect('clicked', lambda button, i: ChangeZoneDialog(dialog, self.app, i), str(i))
 			vbox.pack_start(w, False, False)
 
 	vbox.show_all()
-	dialog.show()
-	dialog.connect('response', lambda dialog, id: self.settings_dialog_response(id))
-	self.dialog = dialog
+	if self.buttonvbox:
+	    dialog.get_child().remove(self.buttonvbox)
+	self.buttonvbox = vbox
+	dialog.get_child().pack_start(vbox)
 
     def settings_dialog_response(self, id):
 	self.dialog.destroy()
 	self.dialog = None
 	self.app.overview_dialog = None
 
+	if not self.app.icon.isshown():
+	    gtk.main_quit()
+
     def cancel(self):
 	self.dialog.response(gtk.RESPONSE_CANCEL)
-
 
 class fwzsApp:
 
@@ -258,7 +279,11 @@ class fwzsApp:
 	self.icon = StatusIcon(self)
 	self.check_status()
 	self.overview_dialog = None
-	self.icon.show()
+
+	if True:
+	    self.overview_dialog = OverviewDialog(self)
+	else:
+	    self.icon.show()
 
     def nameowner_changed_handler(self, name, old, new):
 	if name != 'org.opensuse.zoneswitcher':
@@ -356,6 +381,9 @@ class fwzsApp:
 	    except Exception, e:
 		self.error_dialog(str(e))
 		return
+
+	if self.overview_dialog:
+	    self.overview_dialog.set_contents()
 
     def run_firewall(self):
 	ret = False
