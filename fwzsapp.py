@@ -33,17 +33,63 @@ icon_yellow = ICONDIR + '/firewall_y.png'
 icon_red = ICONDIR + '/firewall_x.png'
 icon_grey = ICONDIR + '/firewall_g.png'
 
+class ChangeZoneDialog:
+
+    def __init__(self, parent, app, iface):
+	self.app = app
+	self.selection = None
+	zones = app.iface.Zones()
+	ifaces = app.iface.Interfaces()
+	if not zones or not ifaces:
+	    app.error_dialog("Can't get list of interfaces or zones")
+	    return
+
+	dialog = gtk.Dialog("Choose Zone", parent, 0, (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+	vbox = dialog.get_child()
+	group = None
+	for z in zones:
+	    txt = zones[z]
+	    if not txt:
+		txt = z
+	    rb = gtk.RadioButton(group, txt)
+	    group = rb
+	    if z == ifaces[iface]:
+		rb.set_active(True)
+	    rb.connect('toggled', lambda *args: self._zone_selected(*args), iface, z)
+	    vbox.pack_start(rb, False, False)
+	    rb.show()
+
+	vbox.show_all()
+	dialog.show()
+	dialog.connect('response', lambda dialog, id: self.change_zone_dialog_response(dialog, id))
+
+    def _zone_selected(self, item, iface, zone):
+	if not item.get_active():
+	    return
+
+	self.selection = (iface, zone)
+
+    def change_zone_dialog_response(self, dialog, id):
+	dialog.destroy()
+	if id != gtk.RESPONSE_ACCEPT:
+	    return
+
+	if not self.selection:
+	    print "error: no active item"
+
+	self.app.set_zone(self.selection[0], self.selection[1])
+
 class StatusIcon:
 
-    def __init__(self, parent):
+    def __init__(self, app):
 	self.icon = None
-	self.parent = parent
+	self.app = app
 	self.iconfile = icon_grey
 
     def show(self):
 	self.icon = gtk.status_icon_new_from_file(icon_grey)
-	self.icon.connect('popup-menu', lambda i, eb, et: self.parent.show_menu(i, eb, et))
-#	self.icon.connect('activate', lambda *args: self.parent.show_settings())
+	self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
+	self.icon.connect('activate', lambda *args: self.app.toggle_settings_dialog())
 	self._set_icon()
 
     def hide(self):
@@ -70,14 +116,148 @@ class StatusIcon:
 	self.iconfile = icon_yellow
 	self._set_icon()
 
+    def _menu_error(self, menu, txt):
+	item = gtk.MenuItem(txt)
+	item.set_sensitive(False)
+	item.show()
+	menu.append(item)
 
-class Fwzsapp:
+    def _change_zone(self, item, iface, zone):
+	if not item.get_active():
+	    return
+
+	self.app.set_zone(iface, zone)
+
+    def show_menu(self, icon, event_button, event_time):
+
+	menu = gtk.Menu()
+	self.app.check_status()
+
+	if(not self.app.getzsiface()):
+	    item = gtk.MenuItem("zoneswitcher service not running")
+	    item.set_sensitive(False)
+	    item.show()
+	    menu.append(item)
+	
+	else:
+	    zones = self.app.iface.Zones()
+
+	    if zones:
+		ifaces = self.app.iface.Interfaces()
+
+		if ifaces:
+		    item = gtk.MenuItem("Firewall interfaces")
+		    item.set_sensitive(False)
+		    item.show()
+		    menu.append(item)
+
+		    for i in ifaces:
+			item = gtk.MenuItem(i)
+			item.show()
+			menu.append(item)
+			group = None
+			submenu = gtk.Menu()
+			for z in zones:
+			    txt = zones[z]
+			    if not txt:
+				txt = z
+			    zitem = gtk.RadioMenuItem(group, txt)
+			    group = zitem
+			    if z == ifaces[i]:
+				zitem.set_active(True)
+			    zitem.connect('toggled', lambda *args: self._change_zone(*args), i, z)
+			    zitem.show()
+			    submenu.append(zitem)
+			item.set_submenu(submenu)
+
+		else:
+		    item = gtk.MenuItem("No interfaces found.")
+		    item.set_sensitive(False)
+		    item.show()
+		    menu.append(item)
+
+	    else:
+		self._menu_error(menu, "No zones found.\nFirewall not running or fwzs not supported?")
+
+	    item = gtk.MenuItem("Run Firewall")
+	    item.connect('activate', lambda *args: self.app.run_firewall())
+	    item.show()
+	    menu.append(item)
+
+	item = gtk.SeparatorMenuItem()
+	item.show()
+	menu.append(item)
+
+	item = gtk.MenuItem("Quit")
+	item.connect('activate', lambda *args: gtk.main_quit())
+	item.show()
+	menu.append(item)
+
+	menu.popup(None, None,
+	    gtk.status_icon_position_menu, event_button,
+	    event_time, icon)
+
+class OverviewDialog:
+
+    def __init__(self, app):
+
+	self.app = app
+	closebutton = gtk.STOCK_QUIT
+	if app.icon:
+	    closebutton = gtk.STOCK_CLOSE
+	dialog = gtk.Dialog("Firewall Zone Switcher", None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
+	dialog.set_default_size(400, 250)
+	vbox = dialog.get_child()
+
+	app.check_status()
+
+	if(not app.bus):
+	    w = gtk.Label("DBus not running")
+	    vbox.pack_start(w)
+
+	elif(not app.getzsiface()):
+	    w = gtk.Label("zoneswitcher service not running")
+	    vbox.pack_start(w)
+	else:
+	    zones = app.iface.Zones()
+
+	    if zones:
+		ifaces = app.iface.Interfaces()
+
+		if ifaces:
+		    for i in ifaces:
+			z = ifaces[i]
+			if z:
+			    if zones[z]:
+				z = zones[z]
+			else:
+			    z = '?'
+			txt = '%s - %s' % (i, z)
+			w = gtk.Button(txt)
+			w.connect('clicked', lambda button: ChangeZoneDialog(dialog, app, str(i)))
+			vbox.pack_start(w, False, False)
+
+	vbox.show_all()
+	dialog.show()
+	dialog.connect('response', lambda dialog, id: self.settings_dialog_response(id))
+	self.dialog = dialog
+
+    def settings_dialog_response(self, id):
+	self.dialog.destroy()
+	self.dialog = None
+	self.app.overview_dialog = None
+
+    def cancel(self):
+	self.dialog.response(gtk.RESPONSE_CANCEL)
+
+
+class fwzsApp:
 
     def __init__(self, parent=None):
 	self.bus = self.obj = self.iface = None
 	self.icon = StatusIcon(self)
 	self.check_status()
-	self.dialog = None
+	self.overview_dialog = None
 	self.icon.show()
 
     def nameowner_changed_handler(self, name, old, new):
@@ -154,33 +334,30 @@ class Fwzsapp:
 
 	return self.iface
 
-    def _error_dialog(self, msg, title="Firewall Error"):
+    def error_dialog(self, msg, title="Firewall Error"):
 	d = gtk.MessageDialog(None, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, msg)
 	d.set_title(title)
 	d.run()
 	d.destroy()
 
-    def _change_zone(self, item, iface, zone):
-	if not item.get_active():
-	    return
-
+    def set_zone(self, iface, zone):
 	repeat = True
 	while repeat:
 	    repeat = False
 	    try:
 		self.iface.setZone(iface, zone)
-		self._run_firewall()
+		self.run_firewall()
 	    except dbus.DBusException, e:
 		if e.get_dbus_name() == 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException':
 		    if self.polkitauth(Exception.__str__(e)):
 			repeat = True
 		else:
-		    self._error_dialog(str(e))
+		    self.error_dialog(str(e))
 	    except Exception, e:
-		self._error_dialog(str(e))
+		self.error_dialog(str(e))
 		return
 
-    def _run_firewall(self):
+    def run_firewall(self):
 	ret = False
 	repeat = True
 	while repeat:
@@ -192,110 +369,18 @@ class Fwzsapp:
 		    if self.polkitauth(Exception.__str__(e)):
 			repeat = True
 		else:
-		    self._error_dialog(str(e))
+		    self.error_dialog(str(e))
 	    except Exception, e:
-		self._error_dialog(str(e))
+		self.error_dialog(str(e))
 
 	self.check_status()
 	return ret
 
-    def _menu_error(self, menu, txt):
-	item = gtk.MenuItem(txt)
-	item.set_sensitive(False)
-	item.show()
-	menu.append(item)
-
-    def show_menu(self, icon, event_button, event_time):
-
-	menu = gtk.Menu()
-	self.check_status()
-
-	if(not self.bus):
-	    item = gtk.MenuItem("DBus not running")
-	    item.set_sensitive(False)
-	    item.show()
-	    menu.append(item)
-
-	    self.icon.grey()
-
-	elif(not self.getzsiface()):
-	    item = gtk.MenuItem("zoneswitcher service not running")
-	    item.set_sensitive(False)
-	    item.show()
-	    menu.append(item)
-	
+    def toggle_settings_dialog(self):
+	if self.overview_dialog:
+	    self.overview_dialog.cancel()
 	else:
-	    zones = self.iface.Zones()
-
-	    if zones:
-		ifaces = self.iface.Interfaces()
-
-		if ifaces:
-		    item = gtk.MenuItem("Firewall interfaces")
-		    item.set_sensitive(False)
-		    item.show()
-		    menu.append(item)
-
-		    for i in ifaces:
-			item = gtk.MenuItem(i)
-			item.show()
-			menu.append(item)
-			group = None
-			submenu = gtk.Menu()
-			for z in zones:
-			    txt = zones[z]
-			    if not txt:
-				txt = z
-			    zitem = gtk.RadioMenuItem(group, txt)
-			    group = zitem
-			    if z == ifaces[i]:
-				zitem.set_active(True)
-			    zitem.connect('toggled', lambda *args: self._change_zone(*args), i, z)
-			    zitem.show()
-			    submenu.append(zitem)
-			item.set_submenu(submenu)
-
-		else:
-		    item = gtk.MenuItem("No interfaces found.")
-		    item.set_sensitive(False)
-		    item.show()
-		    menu.append(item)
-
-	    else:
-		self._menu_error(menu, "No zones found.\nFirewall not running or fwzs not supported?")
-
-	    item = gtk.MenuItem("Run Firewall")
-	    item.connect('activate', lambda *args: self._run_firewall())
-	    item.show()
-	    menu.append(item)
-
-	item = gtk.SeparatorMenuItem()
-	item.show()
-	menu.append(item)
-
-	item = gtk.MenuItem("Quit")
-	item.connect('activate', lambda *args: gtk.main_quit())
-	item.show()
-	menu.append(item)
-
-	menu.popup(None, None,
-	    gtk.status_icon_position_menu, event_button,
-	    event_time, icon)
-
-    def show_settings(self):
-	if self.dialog:
-	    return
-	self.dialog = gtk.Dialog("Firewall Zone Switcher", None, 0, ( gtk.STOCK_OK, gtk.RESPONSE_ACCEPT ))
-	vbox = self.dialog.get_child()
-	w = gtk.CheckButton("autostart")
-	w.show()
-	vbox.pack_end(w)
-	self.dialog.show()
-	self.dialog.connect('response', lambda *args: self.settings_response())
-
-    def settings_response(self):
-	self.dialog.destroy()
-	self.dialog = None
+	    self.overview_dialog = OverviewDialog(self)
 
     def polkitauth(self, action):
 	ok = False
@@ -304,14 +389,14 @@ class Fwzsapp:
 	    ok = agent.ObtainAuthorization(action, dbus.UInt32(0), dbus.UInt32(getpid()));
 	except dbus.DBusException, e:
 	    if e.get_dbus_name() == 'org.freedesktop.DBus.Error.ServiceUnknown':
-		self._error_dialog("The PolicyKit Authentication Agent is not available.\nTry installing 'PolicyKit-gnome'.")
+		self.error_dialog("The PolicyKit Authentication Agent is not available.\nTry installing 'PolicyKit-gnome'.")
 	    else:
 		raise
 	return ok
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    app = Fwzsapp();
+    app = fwzsApp();
     gtk.main()
 
 # vim: sw=4 ts=8 noet
