@@ -51,6 +51,8 @@ class ChangeZoneDialog:
 
 	dialog = gtk.Dialog(_("Choose Zone for %s") % iface, parent, 0, (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
 	vbox = dialog.get_child()
+	v = gtk.VBox()
+	v.set_border_width(6)
 	group = None
 	for z in zones:
 	    txt = zones[z]
@@ -62,10 +64,11 @@ class ChangeZoneDialog:
 		rb.set_active(True)
 		self.selection = (iface, z)
 	    rb.connect('toggled', lambda *args: self._zone_selected(*args), iface, z)
-	    vbox.pack_start(rb, False, False)
+	    v.pack_start(rb, False, False)
 	    rb.show()
 
-	vbox.show_all()
+	v.show_all()
+	vbox.pack_start(v, True, True)
 	dialog.show()
 	dialog.connect('response', lambda dialog, id: self.change_zone_dialog_response(dialog, id))
 
@@ -95,7 +98,7 @@ class StatusIcon:
     def show(self):
 	self.icon = gtk.status_icon_new_from_file(icon_grey)
 	self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
-	self.icon.connect('activate', lambda *args: self.app.toggle_settings_dialog())
+	self.icon.connect('activate', lambda *args: self.app.toggle_overview_dialog())
 	self._set_icon()
 
     def isshown(self):
@@ -214,25 +217,23 @@ class OverviewDialog:
 
 	self.app = app
 	closebutton = gtk.STOCK_QUIT
-	self.buttonvbox = None
+	self.content = None
 	if app.icon.isshown():
 	    closebutton = gtk.STOCK_CLOSE
 	dialog = gtk.Dialog(_("Firewall Zone Switcher"), None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
 	dialog.set_default_size(400, 250)
 
-	dialog.connect('response', lambda dialog, id: self.settings_dialog_response(id))
+	dialog.connect('response', lambda dialog, id: self.response(id))
 	self.dialog = dialog
 
 	self.set_contents()
 
 	dialog.show()
 
-    def set_contents(self, dialog = None):
-
-	if not dialog:
-	    dialog = self.dialog
+    def create_button_area(self, dialog):
 
 	vbox = gtk.VBox()
+	vbox.set_border_width(3)
 	self.app.check_status()
 
 	if(not self.app.bus):
@@ -261,13 +262,43 @@ class OverviewDialog:
 			w.connect('clicked', lambda button, i: ChangeZoneDialog(dialog, self.app, i), str(i))
 			vbox.pack_start(w, False, False)
 
-	vbox.show_all()
-	if self.buttonvbox:
-	    dialog.get_child().remove(self.buttonvbox)
-	self.buttonvbox = vbox
-	dialog.get_child().pack_start(vbox)
+	return vbox
 
-    def settings_dialog_response(self, id):
+    def set_contents(self, dialog = None):
+
+	if not dialog:
+	    dialog = self.dialog
+
+	vbox = gtk.VBox()
+	vbox.set_border_width(3)
+
+	h = gtk.HBox()
+	i = gtk.image_new_from_file(icon_green)
+	i.set_alignment(1, 0.5)
+	l = gtk.Label(_("Firewall Zone Switcher"))
+	l.set_alignment(0, 0.5)
+	h.pack_start(i, True, True)
+	h.pack_start(l, True, True)
+	vbox.pack_start(h, False, False)
+
+	frame = gtk.Frame(_("Interfaces"))
+	frame.set_border_width(3)
+	frame.add(self.create_button_area(dialog))
+	vbox.pack_start(frame, True, True, 0)
+
+	b = gtk.Button(_("Settings..."))
+	h = gtk.HBox()
+	h.pack_start(b, False, False, 0)
+	vbox.pack_start(h, False, False, 0)
+
+	vbox.show_all()
+
+	if self.content:
+	    dialog.get_child().remove(self.content)
+	self.content = vbox
+	dialog.get_child().pack_start(self.content)
+
+    def response(self, id):
 	self.dialog.destroy()
 	self.dialog = None
 	self.app.overview_dialog = None
@@ -418,7 +449,7 @@ class fwzsApp:
 	self.check_status()
 	return ret
 
-    def toggle_settings_dialog(self):
+    def toggle_overview_dialog(self):
 	if self.overview_dialog:
 	    self.overview_dialog.cancel()
 	else:
