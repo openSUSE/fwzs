@@ -24,7 +24,8 @@ import glib
 import gtk
 import sys
 from traceback import print_exc
-from os import getpid
+import os
+import ConfigParser
 
 import dbus
 import dbus.mainloop.glib
@@ -39,6 +40,83 @@ icon_yellow = ICONDIR + '/firewall_y.png'
 icon_red = ICONDIR + '/firewall_x.png'
 icon_grey = ICONDIR + '/firewall_g.png'
 
+class Config:
+
+    def __init__(self):
+	self.file = os.path.expanduser(os.getenv('XDG_CONFIG_HOME', '~/.config') + '/fwzs/config')
+	self.config = ConfigParser.RawConfigParser()
+	self.config.read(self.file)
+
+    def getbool(self, section, option, default=None):
+	if self.config.has_option(section, option):
+	    v = self.config.get(section, option)
+	    if v == 'True':
+		return True
+	    return False
+	return default
+
+    def set(self, section, option, value):
+	if not self.config.has_section(section):
+	    self.config.add_section(section)
+	self.config.set(section, option, value)
+
+    def save(self):
+	try:
+	    dir = os.path.dirname(self.file)
+	    if not os.access(dir, os.F_OK):
+		os.makedirs(dir)
+	    out = open(self.file, "wb")
+	    self.config.write(out)
+	except Exception, e:
+	    print e
+
+
+class SettingsDialog:
+
+    def __init__(self, parent, app):
+	self.app = app
+	dialog = gtk.Dialog(_("Settings"), parent, gtk.DIALOG_MODAL,
+		(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+	v = gtk.VBox()
+	v.set_border_width(6)
+
+	self.trayiconcb = gtk.CheckButton(_("System Tray Icon"))
+	if app.config.getbool('general', 'systray', False):
+	    self.trayiconcb.set_active(True)
+	v.pack_start(self.trayiconcb)
+
+	self.autostartcb = gtk.CheckButton(_("Start on Log-in"))
+	if app.config.getbool('general', 'autostart', False):
+	    self.autostartcb.set_active(True)
+	v.pack_start(self.autostartcb)
+
+	v.show_all()
+	dialog.get_child().pack_start(v)
+
+	dialog.show()
+	dialog.connect('response', lambda dialog, id: self.response(dialog, id))
+
+    def response(self, dialog, id):
+	dialog.destroy()
+
+	if id != gtk.RESPONSE_ACCEPT:
+	    return
+
+	v = self.trayiconcb.get_active()
+	self.app.config.set('general', 'systray', v)
+	if v:
+	    self.app.icon.show()
+	else:
+	    self.app.icon.hide()
+
+	self.app.config.set('general', 'autostart', self.autostartcb.get_active())
+	# TODO: implement autostart
+
+	self.app.config.save()
+
+    def __del__(self):
+	print "destruct"
+
 class ChangeZoneDialog:
 
     def __init__(self, parent, app, iface):
@@ -50,7 +128,8 @@ class ChangeZoneDialog:
 	    app.error_dialog(_("Can't get list of interfaces or zones"))
 	    return
 
-	dialog = gtk.Dialog(_("Choose Zone for %s") % iface, parent, 0, (gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+	dialog = gtk.Dialog(_("Choose Zone for %s") % iface, parent, gtk.DIALOG_MODAL,
+		(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
 	vbox = dialog.get_child()
 	v = gtk.VBox()
 	v.set_border_width(6)
@@ -97,19 +176,24 @@ class StatusIcon:
 	self.iconfile = icon_grey
 
     def show(self):
-	self.icon = gtk.status_icon_new_from_file(self.iconfile)
-	self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
-	self.icon.connect('activate', lambda *args: self.app.toggle_overview_dialog())
+	if not self.icon:
+	    self.icon = gtk.status_icon_new_from_file(self.iconfile)
+	    self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
+	    self.icon.connect('activate', lambda *args: self.app.toggle_overview_dialog())
+	else:
+	    self.icon.set_visible(True)
+
 	self._set_icon()
 
     def isshown(self):
-	if self.icon:
+	if self.icon and self.icon.get_visible():
 	    return True
 	return False
 
     def hide(self):
-	# TODO
-	self.icon = None
+	# no idea how to destroy it, so hide it
+	if self.icon:
+	    self.icon.set_visible(False)
 
     def _set_icon(self):
 	if self.icon:
@@ -287,6 +371,7 @@ class OverviewDialog:
 	vbox.pack_start(frame, True, True, 0)
 
 	b = gtk.Button(_("Settings..."))
+	b.connect('clicked', lambda button, *args: SettingsDialog(dialog, self.app))
 	h = gtk.HBox()
 	h.pack_start(b, False, False, 0)
 	vbox.pack_start(h, False, False, 0)
@@ -313,6 +398,7 @@ class fwzsApp:
 
     def __init__(self, trayonly=False, delay=0):
 	self.bus = self.obj = self.iface = None
+	self.config = Config()
 	self.icon = StatusIcon(self)
 	self.overview_dialog = None
 
@@ -321,9 +407,10 @@ class fwzsApp:
 	else:
 	    self.check_status()
 
-	if trayonly:
+	if trayonly or self.config.getbool('general', 'systray', False):
 	    self.icon.show()
-	else:
+
+	if not trayonly:
 	    self.overview_dialog = OverviewDialog(self)
 
     def startup_timer(self):
@@ -469,7 +556,7 @@ class fwzsApp:
 	ok = False
 	try:
 	    agent = dbus.SessionBus().get_object("org.freedesktop.PolicyKit.AuthenticationAgent", "/")
-	    ok = agent.ObtainAuthorization(action, dbus.UInt32(0), dbus.UInt32(getpid()));
+	    ok = agent.ObtainAuthorization(action, dbus.UInt32(0), dbus.UInt32(os.getpid()));
 	except dbus.DBusException, e:
 	    if e.get_dbus_name() == 'org.freedesktop.DBus.Error.ServiceUnknown':
 		self.error_dialog(_("The PolicyKit Authentication Agent is not available.\nTry installing 'PolicyKit-gnome'."))
