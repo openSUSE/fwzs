@@ -20,6 +20,7 @@
 
 ICONDIR = '.' # +++automake+++
 
+import glib
 import gtk
 import sys
 from traceback import print_exc
@@ -96,7 +97,7 @@ class StatusIcon:
 	self.iconfile = icon_grey
 
     def show(self):
-	self.icon = gtk.status_icon_new_from_file(icon_grey)
+	self.icon = gtk.status_icon_new_from_file(self.iconfile)
 	self.icon.connect('popup-menu', lambda i, eb, et: self.show_menu(i, eb, et))
 	self.icon.connect('activate', lambda *args: self.app.toggle_overview_dialog())
 	self._set_icon()
@@ -234,7 +235,6 @@ class OverviewDialog:
 
 	vbox = gtk.VBox()
 	vbox.set_border_width(3)
-	self.app.check_status()
 
 	if(not self.app.bus):
 	    w = gtk.Label("DBus not running")
@@ -311,16 +311,25 @@ class OverviewDialog:
 
 class fwzsApp:
 
-    def __init__(self, parent=None):
+    def __init__(self, trayonly=False, delay=0):
 	self.bus = self.obj = self.iface = None
 	self.icon = StatusIcon(self)
-	self.check_status()
 	self.overview_dialog = None
 
-	if True:
-	    self.overview_dialog = OverviewDialog(self)
+	if delay:
+	    glib.timeout_add_seconds(delay, self.startup_timer)
 	else:
+	    self.check_status()
+
+	if trayonly:
 	    self.icon.show()
+	else:
+	    self.overview_dialog = OverviewDialog(self)
+
+    def startup_timer(self):
+	if not self.bus:
+	    self.check_status()
+	return False
 
     def nameowner_changed_handler(self, name, old, new):
 	if name != 'org.opensuse.zoneswitcher':
@@ -453,6 +462,7 @@ class fwzsApp:
 	if self.overview_dialog:
 	    self.overview_dialog.cancel()
 	else:
+	    self.check_status()
 	    self.overview_dialog = OverviewDialog(self)
 
     def polkitauth(self, action):
@@ -468,8 +478,19 @@ class fwzsApp:
 	return ok
 
 if __name__ == '__main__':
+    from optparse import OptionParser
+
+    parser = OptionParser(usage="%prog [options]")
+    parser.add_option('--tray', dest="tray", action='store_true',
+	    default=False, help="start as system tray icon")
+    parser.add_option('--delay', dest="delay", metavar='N',
+	    action='store', type='int', default=0,
+	    help="when started in system tray, delay status query N seconds")
+
+    (opts, args) = parser.parse_args()
+
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-    app = fwzsApp();
+    app = fwzsApp(trayonly = opts.tray, delay=opts.delay);
     gtk.main()
 
 # vim: sw=4 ts=8 noet
