@@ -29,6 +29,8 @@ import dbus
 import dbus.mainloop.glib
 
 import gettext
+import locale
+
 gettext.install('fwzsapp')
 
 icon_green = ICONDIR + '/firewall.png'
@@ -58,6 +60,7 @@ class ChangeZoneDialog:
 	    group = rb
 	    if z == ifaces[iface]:
 		rb.set_active(True)
+		self.selection = (iface, z)
 	    rb.connect('toggled', lambda *args: self._zone_selected(*args), iface, z)
 	    vbox.pack_start(rb, False, False)
 	    rb.show()
@@ -296,6 +299,9 @@ class fwzsApp:
 	    self.obj = self.iface = None
 	    self.icon.grey()
 
+	    if self.overview_dialog:
+		self.overview_dialog.set_contents()
+
 	elif(not old and new):
 	    self.check_status()
 
@@ -350,6 +356,13 @@ class fwzsApp:
 					       "/org/opensuse/zoneswitcher0")
 
 		self.iface = dbus.Interface(self.obj, "org.opensuse.zoneswitcher")
+
+		l = locale.getlocale(locale.LC_MESSAGES)
+		if l[0]:
+		    self.iface.setLang(l[0])
+
+		if self.overview_dialog:
+		    self.overview_dialog.set_contents()
 
 		#print self.obj.Introspect(dbus_interface="org.freedesktop.DBus.Introspectable")
 

@@ -42,6 +42,15 @@ class ZoneSwitcher(dbus.service.Object):
 
     interface = "org.opensuse.zoneswitcher"
 
+    def __init__(self, *args):
+	dbus.service.Object.__init__(self, *args) 
+	self.trans = {}
+	print "init"
+	self._connection.add_signal_receiver(
+			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
+			dbus_interface='org.freedesktop.DBus',
+			signal_name='NameOwnerChanged')
+
     @dbus.service.method(interface,
                          in_signature='', out_signature='a{ss}', sender_keyword='sender')
     def Zones(self, sender=None):
@@ -76,6 +85,24 @@ class ZoneSwitcher(dbus.service.Object):
 	exception on error"""
 	raise FirewallException("not implemented")
 
+    @dbus.service.method(interface,
+                         in_signature='s', out_signature='b', sender_keyword='sender')
+    def setLang(self, lang, sender=None):
+	return self._setlang(lang, sender=sender)
+
+    def _setlang(self, lang, domain="fwzsd", sender=None):
+	# yet another hack. We remember the language per connection
+	try:
+	    t = gettext.translation(domain=domain, languages=[lang])
+	    self.trans[sender] = t
+	    return True
+	except Exception, e:
+	    print e
+	return False
+
+    def nameowner_changed_handler(self, name, old, new):
+	if old and not new and old in self.trans:
+	    del self.trans[old]
 
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
@@ -106,6 +133,8 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	for z in self._listzones():
 	    if z in self.ZONES:
 		ret[z] = self.ZONES[z]
+		if sender in self.trans:
+		    ret[z] = self.trans[sender].gettext(ret[z])
 	    else:
 		ret[z] = None
 
