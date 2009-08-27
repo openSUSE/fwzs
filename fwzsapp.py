@@ -19,6 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ICONDIR = '.' # +++automake+++
+BINDIR  = '.' # +++automake+++
 
 import glib
 import gtk
@@ -40,10 +41,55 @@ icon_yellow = ICONDIR + '/firewall_y.png'
 icon_red = ICONDIR + '/firewall_x.png'
 icon_grey = ICONDIR + '/firewall_g.png'
 
+xdg_configdir = os.path.expanduser(os.getenv('XDG_CONFIG_HOME', '~/.config'))
+
+class DesktopAutoStart:
+    def __init__(self):
+	self.file = xdg_configdir + '/autostart/fwzs.desktop'
+
+    def is_enabled(self):
+	if os.access(self.file, os.F_OK):
+	    return True
+	return False
+
+    def enable(self, enable=None):
+	if enable == None or enable:
+	    script = sys.argv[0]
+	    if script and (script[0:1] != '/' or not os.access(script, os.X_OK)):
+		print "enable autostart not possible"
+		return False
+
+	    try:
+		out = open(self.file, "w")
+		out.write("""[Desktop Entry]
+Name=Firewall Zone Switcher
+Comment=System Tray applet that allows to switch firewall zones
+Terminal=false
+Type=Application
+StartupNotify=false
+""")
+		out.write("Exec="+script+" --tray --delay=5\n")
+		out.close()
+		return True
+
+	    except Exception, e:
+		print e
+	    return False
+	else:
+	    return self.disable()
+
+    def disable(self):
+	try:
+	    os.remove(self.file)
+	    return True
+	except Exception, e:
+	    print e
+	return False
+
 class Config:
 
     def __init__(self):
-	self.file = os.path.expanduser(os.getenv('XDG_CONFIG_HOME', '~/.config') + '/fwzs/config')
+	self.file = xdg_configdir + '/fwzs/config'
 	self.config = ConfigParser.RawConfigParser()
 	self.config.read(self.file)
 
@@ -86,7 +132,7 @@ class SettingsDialog:
 	v.pack_start(self.trayiconcb)
 
 	self.autostartcb = gtk.CheckButton(_("Start on Log-in"))
-	if app.config.getbool('general', 'autostart', False):
+	if DesktopAutoStart().is_enabled():
 	    self.autostartcb.set_active(True)
 	v.pack_start(self.autostartcb)
 
@@ -109,13 +155,13 @@ class SettingsDialog:
 	else:
 	    self.app.icon.hide()
 
-	self.app.config.set('general', 'autostart', self.autostartcb.get_active())
-	# TODO: implement autostart
+	v = self.autostartcb.get_active()
+	DesktopAutoStart().enable(v)
 
 	self.app.config.save()
 
-    def __del__(self):
-	print "destruct"
+#    def __del__(self):
+#	print "destruct"
 
 class ChangeZoneDialog:
 

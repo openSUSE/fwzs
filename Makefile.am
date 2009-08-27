@@ -20,7 +20,7 @@ policy_DATA = org.opensuse.zoneswitcher.policy
 do_subst = sed -e 's,[@]sbindir[@],$(sbindir),' \
 	   -e 's,[@]bindir[@],$(bindir),' \
 	   -e 's,[@]icondir[@],$(icondir),'
-do_subst_py = sed -e '/+++automake/{s@ICONDIR = .*@ICONDIR = "$(icondir)"@}'
+do_subst_py = sed -e '/+++automake/{s@ICONDIR *= .*@ICONDIR = "$(icondir)"@;s@BINDIR *= .*@BINDIR = "$(bindir)"@}'
 
 fwzsd: fwzsd.py Makefile
 	@echo "creating $@"
