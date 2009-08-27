@@ -1,0 +1,95 @@
+# translation of fwzsapp_de.po to Deutsch
+# German translations for fwzs package
+# German messages for fwzs.
+# Copyright (C) 2009 THE fwzs'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the fwzs package.
+#
+# Ludwig Nussel <ludwig.nussel@suse.de>, 2009.
+# Ludwig Nussel <lnussel@suse.de>, 2009.
+msgid ""
+msgstr ""
+"Project-Id-Version: fwzsapp_de\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-08-27 10:24+0200\n"
+"PO-Revision-Date: 2009-08-27 10:25+0200\n"
+"Last-Translator: Ludwig Nussel <lnussel@suse.de>\n"
+"Language-Team: Deutsch\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: KBabel 1.11.4\n"
+
+#: ../fwzsapp.py:124
+msgid "Settings"
+msgstr "Einstellungen"
+
+#: ../fwzsapp.py:129
+msgid "System Tray Icon"
+msgstr "System Tray Icon"
+
+#: ../fwzsapp.py:134
+msgid "Start on Log-in"
+msgstr "Beim Einloggen starten"
+
+#: ../fwzsapp.py:174
+msgid "Can't get list of interfaces or zones"
+msgstr "Liste der Schnittstellen kann nicht abgerufen werden"
+
+#: ../fwzsapp.py:177
+#, python-format
+msgid "Choose Zone for %s"
+msgstr "Zone für %s wählen"
+
+#: ../fwzsapp.py:282 ../fwzsapp.py:374
+msgid "zoneswitcher service not running"
+msgstr "zoneswitcher Dienst läuft nicht"
+
+#: ../fwzsapp.py:294
+msgid "Firewall interfaces"
+msgstr "Firewall Schnittstellen"
+
+#: ../fwzsapp.py:319
+msgid "No interfaces found."
+msgstr "Keine Schnittstellen gefunden."
+
+#: ../fwzsapp.py:325
+msgid ""
+"No zones found.\n"
+"Firewall not running or fwzs not supported?"
+msgstr ""
+"Keine Zonen gefunden\n"
+"Läuft die Firewall nicht oder wird fwzs nicht unterstützt?"
+
+#: ../fwzsapp.py:327
+msgid "Run Firewall"
+msgstr "Firewall ausführen"
+
+#: ../fwzsapp.py:336
+msgid "Quit"
+msgstr "Beenden"
+
+#: ../fwzsapp.py:354 ../fwzsapp.py:408
+msgid "Firewall Zone Switcher"
+msgstr "Firewall Zonen-Umschalter"
+
+#: ../fwzsapp.py:414
+msgid "Interfaces"
+msgstr "Schnittstellen"
+
+#: ../fwzsapp.py:419
+msgid "Settings..."
+msgstr "Einstellungen..."
+
+#: ../fwzsapp.py:549
+msgid "Firewall Error"
+msgstr "Firewall Fehler"
+
+#: ../fwzsapp.py:608
+msgid ""
+"The PolicyKit Authentication Agent is not available.\n"
+"Try installing 'PolicyKit-gnome'."
+msgstr ""
+"Der \"PolicyKit Authentication Agent\" ist nicht verfügbar\n"
+"Versuchen Sie 'PolicyKit-gnome' zu installieren."
+

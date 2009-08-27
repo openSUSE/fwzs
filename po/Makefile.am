@@ -25,7 +25,7 @@ install-data-local:
 			$(MSGFMT) -o $$n.mo $$n.po; \
 			set -- install -D -m 644 $$n.mo $(DESTDIR)$(localedir)/$$i/LC_MESSAGES/$$d.mo; \
 			echo "$$@"; \
-			"$$@"; \
+			"$$@"; rm -f $$n.mo; \
 		done; \
 	done
 

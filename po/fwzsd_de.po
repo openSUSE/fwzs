@@ -1,0 +1,39 @@
+# translation of fwzsd.po to Deutsch
+# Copyright (C) 2009 THE fwzs'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the fwzs package.
+#
+# Ludwig Nussel <lnussel@suse.de>, 2009.
+msgid ""
+msgstr ""
+"Project-Id-Version: fwzsd\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-08-26 14:36+0200\n"
+"PO-Revision-Date: 2009-08-25 16:14+0200\n"
+"Last-Translator: Ludwig Nussel <ludwig.nussel@suse.de>\n"
+"Language-Team: German\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.11.4\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: ../fwzsd.py:110
+msgid "Not Protected"
+msgstr "Ungeschützt"
+
+#: ../fwzsd.py:111
+msgid "Partially Protected"
+msgstr "Teilweise Geschützt"
+
+#: ../fwzsd.py:112
+msgid "Protected"
+msgstr "Geschützt"
+
+#~ msgid "Trusted Network"
+#~ msgstr "Vertrauenswürdiges Netz"
+
+#~ msgid "Foreign Network"
+#~ msgstr "Fremdes Netz "
+
+#~ msgid "Internet"
+#~ msgstr "Internet"
