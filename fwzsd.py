@@ -45,7 +45,6 @@ class ZoneSwitcher(dbus.service.Object):
     def __init__(self, *args):
 	dbus.service.Object.__init__(self, *args) 
 	self.trans = {}
-	print "init"
 	self._connection.add_signal_receiver(
 			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
 			dbus_interface='org.freedesktop.DBus',

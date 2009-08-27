@@ -43,6 +43,8 @@ icon_grey = ICONDIR + '/firewall_g.png'
 
 xdg_configdir = os.path.expanduser(os.getenv('XDG_CONFIG_HOME', '~/.config'))
 
+txt_no_zones_found = _("No zones found.\nFirewall not running or fwzs not supported?")
+
 class DesktopAutoStart:
     def __init__(self):
 	self.file = xdg_configdir + '/autostart/fwzs.desktop'
@@ -60,6 +62,9 @@ class DesktopAutoStart:
 		return False
 
 	    try:
+		dir = os.path.dirname(self.file)
+		if not os.access(dir, os.F_OK):
+		    os.makedirs(dir)
 		out = open(self.file, "w")
 		out.write("""[Desktop Entry]
 Name=Firewall Zone Switcher
@@ -229,8 +234,6 @@ class StatusIcon:
 	else:
 	    self.icon.set_visible(True)
 
-	self._set_icon()
-
     def isshown(self):
 	if self.icon and self.icon.get_visible():
 	    return True
@@ -241,25 +244,27 @@ class StatusIcon:
 	if self.icon:
 	    self.icon.set_visible(False)
 
-    def _set_icon(self):
-	if self.icon:
-	    self.icon.set_from_file(self.iconfile)
+    def _set_icon(self, file):
+	
+	if self.iconfile != file:
+	    self.iconfile = file
+	    if self.app.overview_dialog:
+		self.app.overview_dialog.set_contents()
+
+	    if self.icon:
+		self.icon.set_from_file(self.iconfile)
 
     def grey(self):
-	self.iconfile = icon_grey
-	self._set_icon()
+	self._set_icon(icon_grey)
 
     def green(self):
-	self.iconfile = icon_green
-	self._set_icon()
+	self._set_icon(icon_green)
 
     def red(self):
-	self.iconfile = icon_red
-	self._set_icon()
+	self._set_icon(icon_red)
 
     def yellow(self):
-	self.iconfile = icon_yellow
-	self._set_icon()
+	self._set_icon(icon_yellow)
 
     def _menu_error(self, menu, txt):
 	item = gtk.MenuItem(txt)
@@ -322,7 +327,7 @@ class StatusIcon:
 		    menu.append(item)
 
 	    else:
-		self._menu_error(menu, _("No zones found.\nFirewall not running or fwzs not supported?"))
+		self._menu_error(menu, txt_no_zones_found)
 
 	    item = gtk.MenuItem(_("Run Firewall"))
 	    item.connect('activate', lambda *args: self.app.run_firewall())
@@ -376,7 +381,15 @@ class OverviewDialog:
 	else:
 	    zones = self.app.iface.Zones()
 
-	    if zones:
+	    if not zones:
+		vbox.set_border_width(6)
+		vbox.set_spacing(6)
+		w = gtk.Label(txt_no_zones_found)
+		vbox.pack_start(w, False, False)
+		w = gtk.Button(_("Run Firewall"))
+		w.connect('clicked', lambda *args: self.app.run_firewall())
+		vbox.pack_start(w, False, False)
+	    else:
 		ifaces = self.app.iface.Interfaces()
 
 		if ifaces:
@@ -386,7 +399,7 @@ class OverviewDialog:
 			    if zones[z]:
 				z = zones[z]
 			else:
-			    z = '?'
+			    z = _("Unknown")
 			txt = '%s - %s' % (i, z)
 			w = gtk.Button(txt)
 			w.connect('clicked', lambda button, i: ChangeZoneDialog(dialog, self.app, i), str(i))
@@ -403,7 +416,7 @@ class OverviewDialog:
 	vbox.set_border_width(3)
 
 	h = gtk.HBox()
-	i = gtk.image_new_from_file(icon_green)
+	i = gtk.image_new_from_file(self.app.icon.iconfile)
 	i.set_alignment(1, 0.5)
 	l = gtk.Label(_("Firewall Zone Switcher"))
 	l.set_alignment(0, 0.5)
@@ -472,9 +485,6 @@ class fwzsApp:
 	    self.obj = self.iface = None
 	    self.icon.grey()
 
-	    if self.overview_dialog:
-		self.overview_dialog.set_contents()
-
 	elif(not old and new):
 	    self.check_status()
 
@@ -534,14 +544,11 @@ class fwzsApp:
 		if l[0]:
 		    self.iface.setLang(l[0])
 
-		if self.overview_dialog:
-		    self.overview_dialog.set_contents()
-
 		#print self.obj.Introspect(dbus_interface="org.freedesktop.DBus.Introspectable")
 
 	    except dbus.DBusException, e:
 		self.obj = self.iface = None
-		print "here:", str(e)
+		print "can't connect to zoneswitcher:", e
 		return None
 
 	return self.iface
@@ -568,9 +575,6 @@ class fwzsApp:
 	    except Exception, e:
 		self.error_dialog(str(e))
 		return
-
-	if self.overview_dialog:
-	    self.overview_dialog.set_contents()
 
     def run_firewall(self):
 	ret = False
