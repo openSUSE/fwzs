@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-08-27 10:24+0200\n"
+"POT-Creation-Date: 2009-08-27 12:06+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,70 +16,74 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../fwzsapp.py:124
-msgid "Settings"
-msgstr ""
-
-#: ../fwzsapp.py:129
-msgid "System Tray Icon"
-msgstr ""
-
-#: ../fwzsapp.py:134
-msgid "Start on Log-in"
-msgstr ""
-
-#: ../fwzsapp.py:174
-msgid "Can't get list of interfaces or zones"
-msgstr ""
-
-#: ../fwzsapp.py:177
-#, python-format
-msgid "Choose Zone for %s"
-msgstr ""
-
-#: ../fwzsapp.py:282 ../fwzsapp.py:374
-msgid "zoneswitcher service not running"
-msgstr ""
-
-#: ../fwzsapp.py:294
-msgid "Firewall interfaces"
-msgstr ""
-
-#: ../fwzsapp.py:319
-msgid "No interfaces found."
-msgstr ""
-
-#: ../fwzsapp.py:325
+#: ../fwzsapp.py:46
 msgid ""
 "No zones found.\n"
 "Firewall not running or fwzs not supported?"
 msgstr ""
 
-#: ../fwzsapp.py:327
+#: ../fwzsapp.py:129
+msgid "Settings"
+msgstr ""
+
+#: ../fwzsapp.py:134
+msgid "System Tray Icon"
+msgstr ""
+
+#: ../fwzsapp.py:139
+msgid "Start on Log-in"
+msgstr ""
+
+#: ../fwzsapp.py:179
+msgid "Can't get list of interfaces or zones"
+msgstr ""
+
+#: ../fwzsapp.py:182
+#, python-format
+msgid "Choose Zone for %s"
+msgstr ""
+
+#: ../fwzsapp.py:287 ../fwzsapp.py:379
+msgid "zoneswitcher service not running"
+msgstr ""
+
+#: ../fwzsapp.py:299
+msgid "Firewall interfaces"
+msgstr ""
+
+#: ../fwzsapp.py:324
+msgid "No interfaces found."
+msgstr ""
+
+#: ../fwzsapp.py:332 ../fwzsapp.py:389
 msgid "Run Firewall"
 msgstr ""
 
-#: ../fwzsapp.py:336
+#: ../fwzsapp.py:341
 msgid "Quit"
 msgstr ""
 
-#: ../fwzsapp.py:354 ../fwzsapp.py:408
+#: ../fwzsapp.py:359 ../fwzsapp.py:421
 msgid "Firewall Zone Switcher"
 msgstr ""
 
-#: ../fwzsapp.py:414
+#: ../fwzsapp.py:402
+msgid "Unknown"
+msgstr ""
+
+#: ../fwzsapp.py:427
 msgid "Interfaces"
 msgstr ""
 
-#: ../fwzsapp.py:419
+#: ../fwzsapp.py:432
 msgid "Settings..."
 msgstr ""
 
-#: ../fwzsapp.py:549
+#: ../fwzsapp.py:556
 msgid "Firewall Error"
 msgstr ""
 
-#: ../fwzsapp.py:608
+#: ../fwzsapp.py:612
 msgid ""
 "The PolicyKit Authentication Agent is not available.\n"
 "Try installing 'PolicyKit-gnome'."

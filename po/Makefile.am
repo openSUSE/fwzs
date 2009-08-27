@@ -13,7 +13,11 @@ update-po:
 			n=$${d}_$$i; \
 			test -e $$n.po || continue; \
 			echo -n "$${d} $$i "; \
-			msgmerge $$n $$d.pot -o $$n.po.new && mv $$n.po.new $$n.po; \
+			if ! msgcmp $$n.po $$d.pot 2>/dev/null; then \
+			    msgmerge $$n $$d.pot -o $$n.po.new && mv $$n.po.new $$n.po; \
+			else \
+			    echo unchanged; \
+			fi; \
 		done; \
 	done
 
