@@ -1,14 +1,11 @@
-Desperately needed:
-
-- watch NetworkManager for connection changes and switch to ext
+- watch NetworkManager for connection changes and switch to default
   automatically
-- use PolicyKit instead of dbus at_console
-- error handling
-- i18n
-
-Optional:
+- also support polkit1
 - terminate service after some time
 - properly survive dbus restarts
+
+Optional:
+- other firewall backends
 - allow to temporarily enable services (from
   /etc/sysconfig/SuSEfirewall2.d/services, not individual ports!).
 - port to C instead of python
