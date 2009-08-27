@@ -2,7 +2,7 @@ sbin_SCRIPTS = fwzsd
 bin_SCRIPTS = fwzsapp
 
 icondir = $(pkgdatadir)/icons
-icon_DATA = firewall.png
+icon_DATA = firewall.png firewall_g.png firewall_x.png firewall_y.png
 
 desktopdatadir = $(datadir)/applications
 desktopdata_DATA = fwzsapp.desktop
@@ -44,7 +44,7 @@ CLEANFILES = $(sbin_SCRIPTS) $(bin_SCRIPTS) $(dbussystemservice_DATA) $(desktopd
 EXTRA_DIST = fwzsd.py fwzsapp.py \
 	     org.opensuse.zoneswitcher.service.in \
 	     fwzsapp.desktop.in \
-	     firewall.png \
+	     $(icon_DATA) \
 	     org.opensuse.zoneswitcher.policy \
 	     org.opensuse.zoneswitcher.conf
 
