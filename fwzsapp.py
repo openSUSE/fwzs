@@ -85,7 +85,8 @@ StartupNotify=false
 
     def disable(self):
 	try:
-	    os.remove(self.file)
+	    if os.access(self.file, os.F_OK):
+		os.remove(self.file)
 	    return True
 	except Exception, e:
 	    print e
@@ -109,7 +110,7 @@ class Config:
     def set(self, section, option, value):
 	if not self.config.has_section(section):
 	    self.config.add_section(section)
-	self.config.set(section, option, value)
+	self.config.set(section, option, str(value))
 
     def save(self):
 	try:
