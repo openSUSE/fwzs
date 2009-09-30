@@ -355,6 +355,8 @@ class OverviewDialog:
 	self.app = app
 	closebutton = gtk.STOCK_QUIT
 	self.content = None
+	self.ifaces = None
+	self.zones = None
 	if app.icon.isshown():
 	    closebutton = gtk.STOCK_CLOSE
 	dialog = gtk.Dialog(_("Firewall Zone Switcher"), None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
@@ -380,9 +382,9 @@ class OverviewDialog:
 	    w = gtk.Label(_("zoneswitcher service not running"))
 	    vbox.pack_start(w)
 	else:
-	    zones = self.app.iface.Zones()
+	    self.zones = self.app.iface.Zones()
 
-	    if not zones:
+	    if not self.zones:
 		vbox.set_border_width(6)
 		vbox.set_spacing(6)
 		w = gtk.Label(txt_no_zones_found)
@@ -391,27 +393,41 @@ class OverviewDialog:
 		w.connect('clicked', lambda *args: self.app.run_firewall())
 		vbox.pack_start(w, False, False)
 	    else:
-		ifaces = self.app.iface.Interfaces()
+		self.ifaces = self.app.iface.Interfaces()
 
-		if ifaces:
-		    for i in ifaces:
-			z = ifaces[i]
-			if z:
-			    if zones[z]:
-				z = zones[z]
-			else:
-			    z = _("Unknown")
-			txt = '%s - %s' % (i, z)
+		if self.ifaces:
+		    for i in self.ifaces:
+			z = self.ifaces[i]
+			txt = self.make_label(i, z)
 			w = gtk.Button(txt)
 			w.connect('clicked', lambda button, i: ChangeZoneDialog(dialog, self.app, i), str(i))
+			self.dialog.set_data(i, w)
 			vbox.pack_start(w, False, False)
 
 	return vbox
 
-    def set_contents(self, dialog = None):
+    def make_label(self, i, z):
+	if z:
+	    if self.zones[z]:
+		z = self.zones[z]
+	else:
+	    z = _("Unknown")
+	txt = '%s - %s' % (i, z)
+	return txt
 
-	if not dialog:
-	    dialog = self.dialog
+    def zone_changed(self, iface, zone):
+	if not self.dialog:
+	    return
+
+	self.ifaces[iface] = zone
+	button = self.dialog.get_data(iface)
+	txt = self.make_label(iface, zone)
+	if button:
+	    button.set_label(txt)
+
+    def set_contents(self):
+
+	dialog = self.dialog
 
 	vbox = gtk.VBox()
 	vbox.set_border_width(3)
@@ -567,6 +583,8 @@ class fwzsApp:
 	    try:
 		self.iface.setZone(iface, zone)
 		self.run_firewall()
+		if self.overview_dialog:
+		    self.overview_dialog.zone_changed(iface, zone)
 	    except dbus.DBusException, e:
 		if e.get_dbus_name() == 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException':
 		    if self.polkitauth(Exception.__str__(e)):
