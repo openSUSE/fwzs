@@ -1,7 +1,6 @@
 - watch NetworkManager for connection changes and switch to default
   automatically
 - also support polkit1
-- terminate service after some time
 - properly survive dbus restarts
 
 Optional:

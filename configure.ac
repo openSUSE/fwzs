@@ -1,6 +1,6 @@
 define([dbusdatadirdefault],[${datadir}/dbus-1])dnl
 dnl
-AC_INIT([fwzs],[0.2],[ludwig.nussel@suse.de])
+AC_INIT([fwzs],[0.3],[ludwig.nussel@suse.de])
 AC_CONFIG_SRCDIR([fwzsd.py])
 
 AC_PREREQ(2.53)
