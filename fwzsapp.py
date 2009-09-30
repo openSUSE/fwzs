@@ -589,7 +589,7 @@ class fwzsApp:
 		if self.overview_dialog:
 		    self.overview_dialog.zone_changed(iface, zone)
 	    except dbus.DBusException, e:
-		if e.get_dbus_name() == 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException':
+		if e.get_dbus_name() == 'org.freedesktop.PolicyKit.NotPrivilegedException':
 		    if self.polkitauth(Exception.__str__(e)):
 			repeat = True
 		else:
@@ -606,7 +606,7 @@ class fwzsApp:
 	    try:
 		ret = self.iface.Run()
 	    except dbus.DBusException, e:
-		if e.get_dbus_name() == 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException':
+		if e.get_dbus_name() == 'org.freedesktop.PolicyKit.NotPrivilegedException':
 		    if self.polkitauth(Exception.__str__(e)):
 			repeat = True
 		else:
