@@ -37,55 +37,27 @@ class FirewallException(dbus.DBusException):
 class FirewallNotPrivilegedException(dbus.DBusException):
     _dbus_error_name = 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException'
 
-class ZoneSwitcher(dbus.service.Object):
-    """Base class for zone switcher implementation"""
-
-    interface = "org.opensuse.zoneswitcher"
+# backends need to implement this class
+class ZoneSwitcher:
 
     def __init__(self, *args):
-	dbus.service.Object.__init__(self, *args) 
 	self.trans = {}
-	self._connection.add_signal_receiver(
-			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
-			dbus_interface='org.freedesktop.DBus',
-			signal_name='NameOwnerChanged')
 
-    @dbus.service.method(interface,
-                         in_signature='', out_signature='a{ss}', sender_keyword='sender')
     def Zones(self, sender=None):
-	"""Return {"ZONE": "human readable name", ... }"""
 	raise FirewallException("not implemented")
 
-    @dbus.service.method(interface,
-                         in_signature='', out_signature='a{ss}', sender_keyword='sender')
     def Interfaces(self, sender=None):
-	"""Return {"INTERFACENAME": "ZONE", ... }"""
 	raise FirewallException("not implemented")
 
-    @dbus.service.method(interface,
-                         in_signature='ss', out_signature='b', sender_keyword='sender')
     def setZone(self, interface, zone, sender=None):
-	"""Put the specified interface in the specified zone on next Firewall run
-	Return True|False"""
 	raise FirewallException("not implemented")
 
-    @dbus.service.method(interface,
-                         in_signature='', out_signature='b', sender_keyword='sender')
     def Run(self, sender=None):
-	"""Run the Firewall to apply settings.
-	Return True|False"""
 	raise FirewallException("not implemented")
 
-    @dbus.service.method(interface,
-                         in_signature='', out_signature='b', sender_keyword='sender')
     def Status(self, sender=None):
-	"""Status of backend
-	Return running: True off:False
-	exception on error"""
 	raise FirewallException("not implemented")
 
-    @dbus.service.method(interface,
-                         in_signature='s', out_signature='b', sender_keyword='sender')
     def setLang(self, lang, sender=None):
 	return self._setlang(lang, sender=sender)
 
@@ -102,6 +74,75 @@ class ZoneSwitcher(dbus.service.Object):
     def nameowner_changed_handler(self, name, old, new):
 	if old and not new and old in self.trans:
 	    del self.trans[old]
+
+class ZoneSwitcherDBUS(dbus.service.Object):
+    """DBUS interface for zone switcher"""
+
+    interface = "org.opensuse.zoneswitcher"
+
+    def __init__(self, impl, *args):
+	dbus.service.Object.__init__(self, *args) 
+	self.impl = impl
+	self._connection.add_signal_receiver(
+			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
+			dbus_interface='org.freedesktop.DBus',
+			signal_name='NameOwnerChanged')
+
+    @dbus.service.method(interface,
+                         in_signature='', out_signature='a{ss}', sender_keyword='sender')
+    def Zones(self, sender=None):
+	"""Return {"ZONE": "human readable name", ... }"""
+	return self.impl.Zones(sender=sender)
+
+    @dbus.service.method(interface,
+                         in_signature='', out_signature='a{ss}', sender_keyword='sender')
+    def Interfaces(self, sender=None):
+	"""Return {"INTERFACENAME": "ZONE", ... }"""
+	return self.impl.Interfaces(sender=sender)
+
+    @dbus.service.method(interface,
+                         in_signature='ss', out_signature='b', sender_keyword='sender')
+    def setZone(self, interface, zone, sender=None):
+	"""Put the specified interface in the specified zone on next Firewall run
+	Return True|False"""
+	self._check_polkit(sender)
+	return self.impl.setZone(interface, zone, sender)
+
+    @dbus.service.method(interface,
+                         in_signature='', out_signature='b', sender_keyword='sender')
+    def Run(self, sender=None):
+	"""Run the Firewall to apply settings.
+	Return True|False"""
+	self._check_polkit(sender)
+	return self.impl.Run(sender)
+
+    @dbus.service.method(interface,
+                         in_signature='', out_signature='b', sender_keyword='sender')
+    def Status(self, sender=None):
+	"""Status of backend
+	Return running: True off:False
+	exception on error"""
+	return self.impl.Status(sender=sender)
+
+    @dbus.service.method(interface,
+                         in_signature='s', out_signature='b', sender_keyword='sender')
+    def setLang(self, lang, sender=None):
+	return self.impl.setLang(lang, sender=sender)
+
+    def nameowner_changed_handler(self, name, old, new):
+	self.impl.nameowner_changed_handler(name, old, new)
+
+    def _check_polkit(self, sender, action = "org.opensuse.zoneswitcher.control"):
+	try:
+	    pko = self._connection.get_object("org.freedesktop.PolicyKit", "/")
+	    pki = dbus.Interface(pko, "org.freedesktop.PolicyKit")
+	    result = pki.IsSystemBusNameAuthorized(action, sender, True)
+	    if result and result == "yes":
+		return True
+	except Exception, e:
+	    raise e
+
+	raise FirewallNotPrivilegedException(action)
 
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
@@ -155,7 +196,6 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	    return ""
 
     def setZone(self, interface, zone, sender=None):
-	self.check_polkit(sender)
 	# check user supplied strings
 	if not interface in self._listiterfaces():
 	    raise FirewallException("specified interface is invalid")
@@ -171,7 +211,6 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	return True
 
     def Run(self, sender=None):
-	self.check_polkit(sender)
 	try:
 	    if(subprocess.call(['/sbin/SuSEfirewall2']) != 0):
 		raise FirewallException("SuSEfirewall2 failed")
@@ -186,24 +225,12 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	except:
 	    raise FirewallException("SuSEfirewall2 status unknown")
 
-    def check_polkit(self, sender, action = "org.opensuse.zoneswitcher.control"):
-	try:
-	    pko = self._connection.get_object("org.freedesktop.PolicyKit", "/")
-	    pki = dbus.Interface(pko, "org.freedesktop.PolicyKit")
-	    result = pki.IsSystemBusNameAuthorized(action, sender, True)
-	    if result and result == "yes":
-		return True
-	except Exception, e:
-	    raise e
-
-	raise FirewallNotPrivilegedException(action)
-
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
     bus = dbus.SystemBus()
     name = dbus.service.BusName("org.opensuse.zoneswitcher", bus)
-    object = ZoneSwitcherSuSEfirewall2(bus, '/org/opensuse/zoneswitcher0')
+    object = ZoneSwitcherDBUS(ZoneSwitcherSuSEfirewall2(), bus, '/org/opensuse/zoneswitcher0')
 
     mainloop = gobject.MainLoop()
     mainloop.run()
