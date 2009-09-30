@@ -129,6 +129,7 @@ class SettingsDialog:
 	self.app = app
 	dialog = gtk.Dialog(_("Settings"), parent, gtk.DIALOG_MODAL,
 		(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+	dialog.set_icon_from_file(icon_green)
 	v = gtk.VBox()
 	v.set_border_width(6)
 
@@ -182,6 +183,7 @@ class ChangeZoneDialog:
 
 	dialog = gtk.Dialog(_("Choose Zone for %s") % iface, parent, gtk.DIALOG_MODAL,
 		(gtk.STOCK_OK, gtk.RESPONSE_ACCEPT, gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL))
+	dialog.set_icon_from_file(icon_green)
 	vbox = dialog.get_child()
 	v = gtk.VBox()
 	v.set_border_width(6)
@@ -361,6 +363,7 @@ class OverviewDialog:
 	    closebutton = gtk.STOCK_CLOSE
 	dialog = gtk.Dialog(_("Firewall Zone Switcher"), None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
 	dialog.set_default_size(400, 250)
+	dialog.set_icon_from_file(icon_green)
 
 	dialog.connect('response', lambda dialog, id: self.response(id))
 	self.dialog = dialog
