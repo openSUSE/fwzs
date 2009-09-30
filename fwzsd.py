@@ -29,6 +29,8 @@ import subprocess
 
 import gettext
 
+TIMEOUT = 60
+
 def N_(x): return x
 
 class FirewallException(dbus.DBusException):
@@ -87,17 +89,46 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
 			dbus_interface='org.freedesktop.DBus',
 			signal_name='NameOwnerChanged')
+	self.timeout = None
+	self.mainloop = None
+	self.clients = {}
+
+    def _add_client(self, sender):
+	if self.timeout:
+	    gobject.source_remove(self.timeout)
+	    self.timeout = None
+	self.clients[sender] = 1
+
+    def _update_timeout(self,):
+	if not self.mainloop:
+	    return
+	if self.timeout:
+	    gobject.source_remove(self.timeout)
+	self.timeout = gobject.timeout_add(TIMEOUT * 1000, self._goodbye)
+
+    def set_mainloop(self, l):
+	self.mainloop = l
+
+    def _goodbye(self):
+	if len(self.clients):
+	    print "clients != 0. Should not happen!", self.clients
+	    return
+	print "exit due to timeout"
+	self.mainloop.quit()
+	return False
 
     @dbus.service.method(interface,
                          in_signature='', out_signature='a{ss}', sender_keyword='sender')
     def Zones(self, sender=None):
 	"""Return {"ZONE": "human readable name", ... }"""
+	self._add_client(sender)
 	return self.impl.Zones(sender=sender)
 
     @dbus.service.method(interface,
                          in_signature='', out_signature='a{ss}', sender_keyword='sender')
     def Interfaces(self, sender=None):
 	"""Return {"INTERFACENAME": "ZONE", ... }"""
+	self._add_client(sender)
 	return self.impl.Interfaces(sender=sender)
 
     @dbus.service.method(interface,
@@ -105,6 +136,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
     def setZone(self, interface, zone, sender=None):
 	"""Put the specified interface in the specified zone on next Firewall run
 	Return True|False"""
+	self._add_client(sender)
 	self._check_polkit(sender)
 	return self.impl.setZone(interface, zone, sender)
 
@@ -113,6 +145,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
     def Run(self, sender=None):
 	"""Run the Firewall to apply settings.
 	Return True|False"""
+	self._add_client(sender)
 	self._check_polkit(sender)
 	return self.impl.Run(sender)
 
@@ -122,14 +155,20 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	"""Status of backend
 	Return running: True off:False
 	exception on error"""
+	self._add_client(sender)
 	return self.impl.Status(sender=sender)
 
     @dbus.service.method(interface,
                          in_signature='s', out_signature='b', sender_keyword='sender')
     def setLang(self, lang, sender=None):
+	self._add_client(sender)
 	return self.impl.setLang(lang, sender=sender)
 
     def nameowner_changed_handler(self, name, old, new):
+	if not new and old in self.clients:
+	    del self.clients[old]
+	    if len(self.clients) == 0:
+		self._update_timeout()
 	self.impl.nameowner_changed_handler(name, old, new)
 
     def _check_polkit(self, sender, action = "org.opensuse.zoneswitcher.control"):
@@ -233,6 +272,7 @@ if __name__ == '__main__':
     object = ZoneSwitcherDBUS(ZoneSwitcherSuSEfirewall2(), bus, '/org/opensuse/zoneswitcher0')
 
     mainloop = gobject.MainLoop()
+    object.set_mainloop(mainloop)
     mainloop.run()
 
 # vim: sw=4 ts=8 noet
