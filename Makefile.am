@@ -1,5 +1,5 @@
-sbin_SCRIPTS = fwzsd
-bin_SCRIPTS = fwzsapp
+pkgdata_SCRIPTS = fwzsd fwzsapp
+pkgdata_DATA = PolkitAuth.py
 
 icondir = $(pkgdatadir)/icons
 icon_DATA = firewall.png firewall_g.png firewall_x.png firewall_y.png
@@ -40,12 +40,23 @@ fwzsapp.desktop: fwzsapp.desktop.in Makefile
 	@echo "creating $@"
 	@$(do_subst) $(srcdir)/$< > $@
 
-CLEANFILES = $(sbin_SCRIPTS) $(bin_SCRIPTS) $(dbussystemservice_DATA) $(desktopdata_DATA)
+CLEANFILES = $(pkgdata_SCRIPTS) $(pkgdata_DATA) $(dbussystemservice_DATA) $(desktopdata_DATA)
 EXTRA_DIST = fwzsd.py fwzsapp.py \
 	     org.opensuse.zoneswitcher.service.in \
 	     fwzsapp.desktop.in \
 	     $(icon_DATA) \
 	     org.opensuse.zoneswitcher.policy \
 	     org.opensuse.zoneswitcher.conf
+
+install-exec-local:
+	$(INSTALL_SCRIPT) -d -m 755 $(DESTDIR)$(bindir) $(DESTDIR)$(sbindir)
+	rm -f $(DESTDIR)$(bindir)/fwzsapp
+	rm -f $(DESTDIR)$(sbindir)/fwzsd
+	ln -s $(pkgdatadir)/fwzsapp $(DESTDIR)$(bindir)
+	ln -s $(pkgdatadir)/fwzsd $(DESTDIR)$(sbindir)
+
+uninstall-local:
+	rm -f $(DESTDIR)$(bindir)/fwzsapp
+	rm -f $(DESTDIR)$(sbindir)/fwzsd
 
 SUBDIRS = po
