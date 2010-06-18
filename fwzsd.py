@@ -23,6 +23,7 @@ import gobject
 import dbus
 import dbus.service
 import dbus.mainloop.glib
+from PolkitAuth import PolkitAuth
 
 import os
 import subprocess
@@ -132,22 +133,20 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	return self.impl.Interfaces(sender=sender)
 
     @dbus.service.method(interface,
-                         in_signature='ss', out_signature='b', sender_keyword='sender')
-    def setZone(self, interface, zone, sender=None):
+                         in_signature='ss', out_signature='b', sender_keyword='sender', async_callbacks=('return_cb', 'error_cb'))
+    def setZone(self, interface, zone, sender, return_cb, error_cb):
 	"""Put the specified interface in the specified zone on next Firewall run
 	Return True|False"""
 	self._add_client(sender)
-	self._check_polkit(sender)
-	return self.impl.setZone(interface, zone, sender)
+	self._check_polkit(sender, "org.opensuse.zoneswitcher.control", return_cb, error_cb, lambda interface, zone, sender: self.impl.setZone(interface, zone, sender), interface, zone, sender)
 
     @dbus.service.method(interface,
-                         in_signature='', out_signature='b', sender_keyword='sender')
-    def Run(self, sender=None):
+                         in_signature='', out_signature='b', sender_keyword='sender', async_callbacks=('return_cb', 'error_cb'))
+    def Run(self, sender, return_cb, error_cb):
 	"""Run the Firewall to apply settings.
 	Return True|False"""
 	self._add_client(sender)
-	self._check_polkit(sender)
-	return self.impl.Run(sender)
+	self._check_polkit(sender, "org.opensuse.zoneswitcher.control", return_cb, error_cb, lambda sender: self.impl.Run(sender), sender)
 
     @dbus.service.method(interface,
                          in_signature='', out_signature='b', sender_keyword='sender')
@@ -171,17 +170,27 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 		self._update_timeout()
 	self.impl.nameowner_changed_handler(name, old, new)
 
-    def _check_polkit(self, sender, action = "org.opensuse.zoneswitcher.control"):
-	try:
-	    pko = self._connection.get_object("org.freedesktop.PolicyKit", "/")
-	    pki = dbus.Interface(pko, "org.freedesktop.PolicyKit")
-	    result = pki.IsSystemBusNameAuthorized(action, sender, True)
-	    if result and result == "yes":
-		return True
-	except Exception, e:
-	    raise e
+    def _check_polkit(self, sender, action, return_cb, error_cb, func, *args ):
+	#print return_cb, error_cb, func, args
+	pk = PolkitAuth()
+	pk.check(sender, action,
+		lambda result: self._pk_auth_done(result, return_cb, error_cb, func, args),
+		lambda e: self._pk_auth_except(error_cb, e))
 
-	raise FirewallNotPrivilegedException(action)
+    def _pk_auth_done(self, result, return_cb, error_cb, func, *args):
+	#print return_cb, error_cb, func, args
+	r = False
+	if(result):
+	    try:
+		r = func(*args)
+	    except Exception, e:
+		error_cb(e)
+		return
+		
+	return_cb(r)
+
+    def _pk_auth_except(self, error_cb, e):
+	error_cb(e)
 
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
