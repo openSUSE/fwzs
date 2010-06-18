@@ -17,6 +17,9 @@ dbussystemconfig_DATA = org.opensuse.zoneswitcher.conf
 policydir = $(datadir)/PolicyKit/policy
 policy_DATA = org.opensuse.zoneswitcher.policy
 
+policy1dir = $(datadir)/polkit-1/actions
+policy1_DATA = org.opensuse.zoneswitcher.policy
+
 do_subst = sed -e 's,[@]sbindir[@],$(sbindir),' \
 	   -e 's,[@]bindir[@],$(bindir),' \
 	   -e 's,[@]icondir[@],$(icondir),'
@@ -54,6 +57,9 @@ install-exec-local:
 	rm -f $(DESTDIR)$(sbindir)/fwzsd
 	ln -s $(pkgdatadir)/fwzsapp $(DESTDIR)$(bindir)
 	ln -s $(pkgdatadir)/fwzsd $(DESTDIR)$(sbindir)
+
+install-data-local: install-policyDATA
+	sed -i -e 's/auth_admin_keep/auth_admin_keep_always/g' $(DESTDIR)$(policydir)/org.opensuse.zoneswitcher.policy
 
 uninstall-local:
 	rm -f $(DESTDIR)$(bindir)/fwzsapp
