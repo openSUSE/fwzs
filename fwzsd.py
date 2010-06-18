@@ -138,7 +138,9 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	"""Put the specified interface in the specified zone on next Firewall run
 	Return True|False"""
 	self._add_client(sender)
-	self._check_polkit(sender, "org.opensuse.zoneswitcher.control", return_cb, error_cb, lambda interface, zone, sender: self.impl.setZone(interface, zone, sender), interface, zone, sender)
+	self._check_polkit(sender, "org.opensuse.zoneswitcher.control",
+		return_cb, error_cb,
+		lambda interface, zone, sender: self.impl.setZone(interface, zone, sender), interface, zone, sender)
 
     @dbus.service.method(interface,
                          in_signature='', out_signature='b', sender_keyword='sender', async_callbacks=('return_cb', 'error_cb'))
@@ -146,7 +148,9 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	"""Run the Firewall to apply settings.
 	Return True|False"""
 	self._add_client(sender)
-	self._check_polkit(sender, "org.opensuse.zoneswitcher.control", return_cb, error_cb, lambda sender: self.impl.Run(sender), sender)
+	self._check_polkit(sender, "org.opensuse.zoneswitcher.control",
+		return_cb, error_cb,
+		lambda sender: self.impl.Run(sender), sender)
 
     @dbus.service.method(interface,
                          in_signature='', out_signature='b', sender_keyword='sender')
@@ -174,7 +178,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	#print return_cb, error_cb, func, args
 	pk = PolkitAuth()
 	pk.check(sender, action,
-		lambda result: self._pk_auth_done(result, return_cb, error_cb, func, args),
+		lambda result: self._pk_auth_done(result, return_cb, error_cb, func, *args),
 		lambda e: self._pk_auth_except(error_cb, e))
 
     def _pk_auth_done(self, result, return_cb, error_cb, func, *args):
