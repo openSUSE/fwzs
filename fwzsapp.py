@@ -601,10 +601,10 @@ class fwzsApp:
 	while repeat:
 	    repeat = False
 	    try:
-		self.iface.setZone(iface, zone)
-		self.run_firewall()
-		if self.overview_dialog:
-		    self.overview_dialog.zone_changed(iface, zone)
+		if self.iface.setZone(iface, zone) == True:
+		    self.run_firewall()
+		    if self.overview_dialog:
+			self.overview_dialog.zone_changed(iface, zone)
 	    except dbus.DBusException, e:
 		if e.get_dbus_name() == 'org.freedesktop.PolicyKit.NotPrivilegedException':
 		    if self.polkitauth(Exception.__str__(e)):
