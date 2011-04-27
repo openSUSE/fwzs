@@ -43,7 +43,7 @@ fwzsapp.desktop: fwzsapp.desktop.in Makefile
 	@echo "creating $@"
 	@$(do_subst) $(srcdir)/$< > $@
 
-CLEANFILES = $(pkgdata_SCRIPTS) $(pkgdata_DATA) $(dbussystemservice_DATA) $(desktopdata_DATA)
+CLEANFILES = $(pkgdata_SCRIPTS) $(dbussystemservice_DATA) $(desktopdata_DATA)
 EXTRA_DIST = fwzsd.py fwzsapp.py \
 	     org.opensuse.zoneswitcher.service.in \
 	     fwzsapp.desktop.in \
