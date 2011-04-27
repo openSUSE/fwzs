@@ -199,9 +199,9 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     ZONES = {
-	'int': N_('Not Protected'),
-	'dmz': N_('Partially Protected'),
-	'ext': N_('Protected'),
+	'int': N_('Trusted'),
+	'dmz': N_('DMZ'),
+	'ext': N_('Untrusted'),
     }
 
     STATUSDIR = '/var/run/SuSEfirewall2/status'
