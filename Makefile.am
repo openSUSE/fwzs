@@ -48,6 +48,7 @@ EXTRA_DIST = fwzsd.py fwzsapp.py \
 	     org.opensuse.zoneswitcher.service.in \
 	     fwzsapp.desktop.in \
 	     $(icon_DATA) \
+	     $(pkgdata_DATA) \
 	     org.opensuse.zoneswitcher.policy \
 	     org.opensuse.zoneswitcher.conf
 
