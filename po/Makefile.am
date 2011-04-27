@@ -1,10 +1,17 @@
-# gettext/intltool automake ingeration really sucks. I do it myself.
+# gettext/intltool automake integration really sucks. I do it myself.
 #
 XGETTEXT = xgettext --keyword=_ --keyword=N_
 MSGFMT = msgfmt
 
 LINGUAS = de
 DOMAINS = fwzsapp fwzsd
+
+mos = $(foreach lang,$(LINGUAS),$(addsuffix _$(lang).mo,$(DOMAINS)))
+
+all-local: $(mos)
+
+%.mo: %.po
+	$(MSGFMT) -o $@ $<
 
 update-po:
 	@for d in $(DOMAINS); do \
@@ -21,12 +28,11 @@ update-po:
 		done; \
 	done
 
-install-data-local:
+install-data-local: $(mos)
 	@for d in $(DOMAINS); do \
 		for i in $(LINGUAS); do \
 			n=$${d}_$$i; \
 			test -e $$n.po || continue; \
-			$(MSGFMT) -o $$n.mo $$n.po; \
 			set -- install -D -m 644 $$n.mo $(DESTDIR)$(localedir)/$$i/LC_MESSAGES/$$d.mo; \
 			echo "$$@"; \
 			"$$@"; rm -f $$n.mo; \
@@ -41,6 +47,9 @@ dist-hook:
 			cp -p $(srcdir)/$$n.po $(distdir)/$$n.po; \
 		done; \
 	done
+
+clean-local:
+	rm -f $(mos)
 
 fwzsapp.pot: $(top_srcdir)/fwzsapp.py
 	$(XGETTEXT) $? -o $@
