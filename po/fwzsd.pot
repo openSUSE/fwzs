@@ -8,22 +8,23 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-08-27 12:06+0200\n"
+"POT-Creation-Date: 2011-04-27 15:52+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../fwzsd.py:109
-msgid "Not Protected"
+#: ../fwzsd.py:202
+msgid "Trusted"
 msgstr ""
 
-#: ../fwzsd.py:110
-msgid "Partially Protected"
+#: ../fwzsd.py:203
+msgid "DMZ"
 msgstr ""
 
-#: ../fwzsd.py:111
-msgid "Protected"
+#: ../fwzsd.py:204
+msgid "Untrusted"
 msgstr ""
