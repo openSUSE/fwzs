@@ -43,7 +43,9 @@ icon_grey = ICONDIR + '/firewall_g.png'
 
 xdg_configdir = os.path.expanduser(os.getenv('XDG_CONFIG_HOME', '~/.config'))
 
-txt_no_zones_found = _("No zones found.\nFirewall not running or fwzs not supported?")
+txt_no_zones_found_on = _("No zones found but Firewall is running.\nFwzs is probably not supported.")
+txt_not_running = _("The firewall is not running.")
+txt_service_not_running = _("zoneswitcher service not running or broken")
 
 class DesktopAutoStart:
     def __init__(self):
@@ -189,7 +191,7 @@ class ChangeZoneDialog:
 	v.set_border_width(6)
 	group = None
 	for z in zones:
-	    txt = zones[z]
+	    txt = zones[z]['desc']
 	    if not txt:
 		txt = z
 	    rb = gtk.RadioButton(group, txt)
@@ -257,17 +259,14 @@ class StatusIcon:
 	    if self.icon:
 		self.icon.set_from_file(self.iconfile)
 
-    def grey(self):
-	self._set_icon(icon_grey)
-
-    def green(self):
-	self._set_icon(icon_green)
-
-    def red(self):
-	self._set_icon(icon_red)
-
-    def yellow(self):
-	self._set_icon(icon_yellow)
+    def update(self):
+	if self.app.running == None:
+	    self._set_icon(icon_grey)
+	elif self.app.running == True:
+	    self._set_icon(icon_green)
+	else:
+	    self._set_icon(icon_red)
+	#self._set_icon(icon_yellow)
 
     def _menu_error(self, menu, txt):
 	item = gtk.MenuItem(txt)
@@ -286,8 +285,8 @@ class StatusIcon:
 	menu = gtk.Menu()
 	self.app.check_status()
 
-	if(not self.app.getzsiface()):
-	    item = gtk.MenuItem(_("zoneswitcher service not running"))
+	if(self.app.running == None):
+	    item = gtk.MenuItem(txt_service_not_running)
 	    item.set_sensitive(False)
 	    item.show()
 	    menu.append(item)
@@ -295,7 +294,7 @@ class StatusIcon:
 	else:
 	    zones = self.app.iface.Zones()
 
-	    if zones:
+	    if zones and self.app.running == True:
 		ifaces = self.app.iface.Interfaces()
 
 		if ifaces:
@@ -311,7 +310,7 @@ class StatusIcon:
 			group = None
 			submenu = gtk.Menu()
 			for z in zones:
-			    txt = zones[z]
+			    txt = zones[z]['desc']
 			    if not txt:
 				txt = z
 			    zitem = gtk.RadioMenuItem(group, txt)
@@ -330,7 +329,10 @@ class StatusIcon:
 		    menu.append(item)
 
 	    else:
-		self._menu_error(menu, txt_no_zones_found)
+		if self.app.running == True:
+		    self._menu_error(menu, txt_no_zones_found_on)
+		else:
+		    self._menu_error(menu, txt_not_running)
 
 	    item = gtk.MenuItem(_("Run Firewall"))
 	    item.connect('activate', lambda *args: self.app.run_firewall())
@@ -381,8 +383,8 @@ class OverviewDialog:
 	    w = gtk.Label("DBus not running")
 	    vbox.pack_start(w)
 
-	elif(not self.app.getzsiface()):
-	    w = gtk.Label(_("zoneswitcher service not running"))
+	elif(self.app.running == None):
+	    w = gtk.Label(txt_service_not_running)
 	    vbox.pack_start(w)
 	else:
 	    try:
@@ -391,10 +393,13 @@ class OverviewDialog:
 		print e
 		pass
 
-	    if not self.zones:
+	    if not self.zones or not self.app.running:
 		vbox.set_border_width(6)
 		vbox.set_spacing(6)
-		w = gtk.Label(txt_no_zones_found)
+		if self.app.running == True:
+		    w = gtk.Label(txt_no_zones_found_on)
+		else:
+		    w = gtk.Label(txt_not_running)
 		vbox.pack_start(w, False, False)
 		w = gtk.Button(_("Run Firewall"))
 		w.connect('clicked', lambda *args: self.app.run_firewall())
@@ -415,8 +420,8 @@ class OverviewDialog:
 
     def make_label(self, i, z):
 	if z:
-	    if self.zones[z]:
-		z = self.zones[z]
+	    if 'desc' in self.zones[z] and self.zones[z]['desc'] != '':
+		z = self.zones[z]['desc']
 	else:
 	    z = _("Unknown")
 	txt = '%s - %s' % (i, z)
@@ -484,6 +489,7 @@ class fwzsApp:
 	self.config = Config()
 	self.icon = StatusIcon(self)
 	self.overview_dialog = None
+	self.running = None;
 
 	if delay:
 	    glib.timeout_add_seconds(delay, self.startup_timer)
@@ -507,7 +513,8 @@ class fwzsApp:
 	
 	if(not new and old):
 	    self.obj = self.iface = None
-	    self.icon.grey()
+	    self.running = None
+	    self.icon.update()
 
 	elif(not old and new):
 	    self.check_status()
@@ -525,14 +532,21 @@ class fwzsApp:
 	    self.getzsiface()
 	    try: 
 		if self.iface.Status():
-		    self.icon.green()
+		    self.running = True;
+		    self.icon.update()
+		    return
 		else:
-		    self.icon.red()
+		    self.running = False;
+		    self.icon.update()
+		    return
 	    except Exception, e:
 		print e
-		self.icon.grey()
+
 	except:
-		self.icon.grey()
+	    pass
+
+	self.running = None
+	self.icon.update()
 
     def getzsiface(self):
 	if(not self.bus):
@@ -554,7 +568,6 @@ class fwzsApp:
 	    except dbus.DBusException, e:
 		print "can't connect to bus:", str(e)
 		self.bus = self.obj = self.iface = None
-		self.icon.grey()
 		return None
 
 	if(not (self.obj and self.iface)):

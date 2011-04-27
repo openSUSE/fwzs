@@ -119,7 +119,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	return False
 
     @dbus.service.method(interface,
-                         in_signature='', out_signature='a{ss}', sender_keyword='sender')
+                         in_signature='', out_signature='a{sa{ss}}', sender_keyword='sender')
     def Zones(self, sender=None):
 	"""Return {"ZONE": "human readable name", ... }"""
 	self._add_client(sender)
@@ -223,12 +223,11 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	ret = {}
 
 	for z in self._listzones():
+	    ret[z] = { 'desc' : '' }
 	    if z in self.ZONES:
-		ret[z] = self.ZONES[z]
+		ret[z]['desc'] = self.ZONES[z]
 		if sender in self.trans:
-		    ret[z] = self.trans[sender].gettext(ret[z])
-	    else:
-		ret[z] = ''
+		    ret[z]['desc'] = self.trans[sender].gettext(ret[z]['desc'])
 
         return ret
 
