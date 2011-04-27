@@ -228,7 +228,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 		if sender in self.trans:
 		    ret[z] = self.trans[sender].gettext(ret[z])
 	    else:
-		ret[z] = None
+		ret[z] = ''
 
         return ret
 

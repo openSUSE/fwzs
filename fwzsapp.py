@@ -385,7 +385,11 @@ class OverviewDialog:
 	    w = gtk.Label(_("zoneswitcher service not running"))
 	    vbox.pack_start(w)
 	else:
-	    self.zones = self.app.iface.Zones()
+	    try:
+		self.zones = self.app.iface.Zones()
+	    except Exception, e:
+		print e
+		pass
 
 	    if not self.zones:
 		vbox.set_border_width(6)

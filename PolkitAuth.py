@@ -48,7 +48,6 @@ class PolkitAuth:
 		r = pki.CheckAuthorization(subj, action, details, flags, cancelid)
 		return self._pk1_result_is_authorized(r)
 	else:
-	    print "try polit"
 	    pko = dbus.SystemBus().get_object("org.freedesktop.PolicyKit", "/")
 	    pki = dbus.Interface(pko, "org.freedesktop.PolicyKit")
 	    if (reply_handler and error_handler):
