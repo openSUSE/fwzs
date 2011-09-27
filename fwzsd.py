@@ -190,6 +190,8 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	    except Exception, e:
 		error_cb(e)
 		return
+	else:
+		error_cb(FirewallException(N_("You are not authorized.")))
 		
 	return_cb(r)
 
@@ -267,6 +269,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 		raise FirewallException("SuSEfirewall2 failed")
 	except:
 	    raise FirewallException("can't run SuSEfirewall2")
+	return True
 
     def Status(self, sender=None):
 	try:
