@@ -270,7 +270,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     def Status(self, sender=None):
 	try:
-	    if(subprocess.call(['/etc/init.d/SuSEfirewall2_setup', 'status']) == 0):
+	    if(subprocess.call(['/sbin/SuSEfirewall2', 'status']) == 0):
 		return True
 	    return False
 	except:
