@@ -530,11 +530,21 @@ class fwzsApp:
 			dbus_interface='org.opensuse.zoneswitcher',
 			bus_name = sender, signal_name='ZoneChanged')
 	    self.signalreceivers.append(sig)
+	    sig = self.bus.add_signal_receiver(
+		    lambda: self._has_run_received(),
+			dbus_interface='org.opensuse.zoneswitcher',
+			bus_name = sender, signal_name='HasRun')
+	    self.signalreceivers.append(sig)
 
     def _zone_changed_receive(self, iface, zone):
 	print "got zone change: ", iface, zone
 	if self.overview_dialog:
 	    self.overview_dialog.zone_changed(iface, zone)
+
+    def _has_run_received(self):
+	print "got HasRun"
+	if self.overview_dialog:
+	    self.overview_dialog.set_contents()
 
     def catchall_handler(self, *args, **kwargs):
 	print "args: ", args

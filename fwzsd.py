@@ -47,7 +47,9 @@ class ZoneSwitcher(gobject.GObject):
 
     __gsignals__ = {
 	'ZoneChanged':
-	    (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, (gobject.TYPE_STRING,gobject.TYPE_STRING,))
+	    (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, (gobject.TYPE_STRING,gobject.TYPE_STRING,)),
+	'HasRun':
+	    (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, ()),
     }
 
     def __init__(self, *args):
@@ -89,6 +91,9 @@ class ZoneSwitcher(gobject.GObject):
     def do_ZoneChanged(self, iface, zone):
 	return
 
+    def do_HasRun(self):
+	return
+
 class ZoneSwitcherDBUS(dbus.service.Object):
     """DBUS interface for zone switcher"""
 
@@ -98,6 +103,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	dbus.service.Object.__init__(self, *args) 
 	self.impl = impl
 	impl.connect('ZoneChanged', lambda obj, iface, zone: self._zone_changed_receive(iface, zone))
+	impl.connect('HasRun', lambda obj: self._has_run_received())
 	self._connection.add_signal_receiver(
 			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
 			dbus_interface='org.freedesktop.DBus',
@@ -177,6 +183,10 @@ class ZoneSwitcherDBUS(dbus.service.Object):
     def ZoneChanged(self, iface, zone):
 	return
 
+    @dbus.service.signal(interface, signature='')
+    def HasRun(self):
+	return
+
     def _zone_changed_receive(self, iface, zone):
 	if not iface:
 	    return
@@ -184,6 +194,10 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	    zone = ''
 	print "DBUS: forwarding ZoneChanged(%s, %s)"%(iface, zone)
 	self.ZoneChanged(iface, zone)
+
+    def _has_run_received(self):
+	print "DBUS: forwarding HasRun()"
+	self.HasRun()
 
     def nameowner_changed_handler(self, name, old, new):
 	if not new and old in self.clients:
@@ -292,6 +306,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 		raise FirewallException("SuSEfirewall2 failed")
 	except:
 	    raise FirewallException("can't run SuSEfirewall2")
+	self.emit("HasRun")
 	return True
 
     def Status(self, sender=None):
