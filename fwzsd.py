@@ -310,6 +310,7 @@ class NMWatcher:
 	self.devuuid = {} # devname => uuid
 	self.zones = {} # uuid => zone
 	self.switcher = switcher
+	self.devicewatchers = {}
 
 	self.readstate()
 
@@ -349,6 +350,8 @@ class NMWatcher:
     def readstate(self):
 	print "read state"
 	file = self.STATEDIR + "/nmwatcher.zones"
+	if not os.access(file, os.F_OK):
+	    return
 	f = open(file, 'r')
 	if (f):
 	    line = f.readline()
@@ -376,9 +379,10 @@ class NMWatcher:
 	if (added):
 	    self.watch_device(device)
 	else:
-	    # it's gone, so we can't ask it anymore. We'd need to store a hash
-	    # to the iface name ourselves...
 	    print "device %s removed"%device
+	    if (device in self.devicewatchers):
+		self.devicewatchers[device].remove()
+		del self.devicewatchers[device]
 
     def device_state_changed_handler(self, props, name, new, old, reason, **kwargs):
 	uuid = None
@@ -387,28 +391,42 @@ class NMWatcher:
 	    uuid = self.activeconn_get_uuid(conn_path)
 	except dbus.DBusException, e:
 	    pass
-	print "dev %s changed %s -> %s (uuid: %s)" % (name, self.devstate2name(old), self.devstate2name(new), uuid)
-	if (not name in self.devuuid or self.devuuid[name] != uuid):
+	print "%s: state change %s -> %s" % (name, self.devstate2name(old), self.devstate2name(new))
+	needchange = False
+	if (not name in self.devuuid):
+	    print "%s: new uuid %s"%(name, uuid)
+	    needchange = True
+	elif (self.devuuid[name] != uuid):
+	    print "%s: uuid change %s -> %s"%(name, self.devuuid[name], uuid)
+	    needchange = True
+	    if (not uuid): # device went down, save previously used zone
+		self.check_and_save(name, self.devuuid[name])
+
+	if (needchange):
 	    try:
 		z = None
 		if (uuid and uuid in self.zones):
 		    z = self.zones[uuid]
-		print "resetting zone to %s" % z
+		print "%s: setting zone to %s"%(name, z)
 		self.switcher.setZone(name, z)
 		if (self.switcher.Status()):
 		    self.switcher.Run()
 	    except FirewallException, e:
 		print e
 
-	if (uuid):
+	    if (uuid):
+		self.check_and_save(name, uuid)
+
+	    self.devuuid[name] = uuid
+
+    def check_and_save(self, name, uuid):
 	    z = self.switcher._get_zone(name)
-	    if (z and z != ""):
-		print "saved zone %s for %s"%(z, uuid)
+	    if (z == ""):
+		z = None
+	    if (z and (not uuid in self.zones or self.zones[uuid] != z)):
+		print "%s: new zone %s"%(uuid, z)
 		self.zones[uuid] = z
-
-	self.savestate()
-
-	self.devuuid[name] = uuid
+		self.savestate()
 
     def _connect_nm(self):
 	try:
@@ -437,6 +455,9 @@ class NMWatcher:
 	if (not running):
 	    self.proxy = self.manager = None
 	    self.devices = None
+	    for d in self.devicewatchers:
+		self.devicewatchers[d].remove()
+	    self.devicewatchers = {}
 
 	self.running = running
 	print "NM Running: ", self.running
@@ -455,6 +476,11 @@ class NMWatcher:
 	return None
 
     def watch_device(self, d):
+	# already watched. could happen if NM restarts and we both query all
+	# devices and receive device add signals.
+	if (d in self.devicewatchers):
+	    return
+
 	dev = self.bus.get_object("org.freedesktop.NetworkManager", d)
 	props = dbus.Interface(dev, "org.freedesktop.DBus.Properties")
 	name = props.Get("org.freedesktop.NetworkManager.Device", "Interface")
@@ -466,8 +492,7 @@ class NMWatcher:
 	self.devuuid[name] = uuid
 
 	print "Watching %s, state %s, uuid %s" % (name, self.devstate2name(state), uuid)
-	# XXX save return value and remove receiver if device goes away?
-	self.bus.add_signal_receiver(
+	self.devicewatchers[d] = self.bus.add_signal_receiver(
 		lambda new, old, reason, **kwargs: self.device_state_changed_handler(props, name, new, old, reason, **kwargs),
 		    dbus_interface = 'org.freedesktop.NetworkManager.Device',
 		    signal_name = 'StateChanged',
