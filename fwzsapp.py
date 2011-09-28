@@ -490,6 +490,7 @@ class fwzsApp:
 	self.icon = StatusIcon(self)
 	self.overview_dialog = None
 	self.running = None;
+	self.signalreceivers = []
 
 	if delay:
 	    glib.timeout_add_seconds(delay, self.startup_timer)
@@ -514,10 +515,26 @@ class fwzsApp:
 	if(not new and old):
 	    self.obj = self.iface = None
 	    self.running = None
+	    for sig in self.signalreceivers:
+		sig.remove()
+	    self.signalreceivers = []
 	    self.icon.update()
 
 	elif(not old and new):
 	    self.check_status()
+	    self._connect_signals(new)
+
+    def _connect_signals(self, sender):
+	    sig = self.bus.add_signal_receiver(
+		    lambda iface, zone: self._zone_changed_receive(iface, zone),
+			dbus_interface='org.opensuse.zoneswitcher',
+			bus_name = sender, signal_name='ZoneChanged')
+	    self.signalreceivers.append(sig)
+
+    def _zone_changed_receive(self, iface, zone):
+	print "got zone change: ", iface, zone
+	if self.overview_dialog:
+	    self.overview_dialog.zone_changed(iface, zone)
 
     def catchall_handler(self, *args, **kwargs):
 	print "args: ", args
@@ -581,6 +598,8 @@ class fwzsApp:
 		if l[0]:
 		    self.iface.setLang(l[0])
 
+		self._connect_signals(self.obj.bus_name)
+
 		#print self.obj.Introspect(dbus_interface="org.freedesktop.DBus.Introspectable")
 
 	    except dbus.DBusException, e:
@@ -601,10 +620,8 @@ class fwzsApp:
 	while repeat:
 	    repeat = False
 	    try:
-		if self.iface.setZone(iface, zone) == True:
-		    self.run_firewall()
-		    if self.overview_dialog:
-			self.overview_dialog.zone_changed(iface, zone)
+		self.iface.setZone(iface, zone)
+		self.run_firewall()
 	    except dbus.DBusException, e:
 		if e.get_dbus_name() == 'org.freedesktop.PolicyKit.NotPrivilegedException':
 		    if self.polkitauth(Exception.__str__(e)):

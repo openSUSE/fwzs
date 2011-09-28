@@ -43,9 +43,15 @@ class FirewallNotPrivilegedException(dbus.DBusException):
     _dbus_error_name = 'org.opensuse.zoneswitcher.FirewallNotPrivilegedException'
 
 # backends need to implement this class
-class ZoneSwitcher:
+class ZoneSwitcher(gobject.GObject):
+
+    __gsignals__ = {
+	'ZoneChanged':
+	    (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, (gobject.TYPE_STRING,gobject.TYPE_STRING,))
+    }
 
     def __init__(self, *args):
+	self.__gobject_init__()
 	self.trans = {}
 
     def Zones(self, sender=None):
@@ -80,6 +86,9 @@ class ZoneSwitcher:
 	if old and not new and old in self.trans:
 	    del self.trans[old]
 
+    def do_ZoneChanged(self, iface, zone):
+	return
+
 class ZoneSwitcherDBUS(dbus.service.Object):
     """DBUS interface for zone switcher"""
 
@@ -88,6 +97,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
     def __init__(self, impl, *args):
 	dbus.service.Object.__init__(self, *args) 
 	self.impl = impl
+	impl.connect('ZoneChanged', lambda obj, iface, zone: self._zone_changed_receive(iface, zone))
 	self._connection.add_signal_receiver(
 			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
 			dbus_interface='org.freedesktop.DBus',
@@ -162,6 +172,18 @@ class ZoneSwitcherDBUS(dbus.service.Object):
     def setLang(self, lang, sender=None):
 	self._add_client(sender)
 	return self.impl.setLang(lang, sender=sender)
+
+    @dbus.service.signal(interface, signature='ss')
+    def ZoneChanged(self, iface, zone):
+	return
+
+    def _zone_changed_receive(self, iface, zone):
+	if not iface:
+	    return
+	if not zone:
+	    zone = ''
+	print "DBUS: forwarding ZoneChanged(%s, %s)"%(iface, zone)
+	self.ZoneChanged(iface, zone)
 
     def nameowner_changed_handler(self, name, old, new):
 	if not new and old in self.clients:
@@ -260,6 +282,8 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	else:
 	    if os.access(file, os.F_OK):
 		os.unlink(file)
+
+	self.emit("ZoneChanged", interface, zone)
 	return True
 
     def Run(self, sender=None):
@@ -497,10 +521,11 @@ class NMWatcher:
 		    dbus_interface = 'org.freedesktop.NetworkManager.Device',
 		    signal_name = 'StateChanged',
 		    path = d, sender_keyword = 'sender')
-	try:
-	    self.switcher.setZone(name, None)
-	except FirewallException, e:
-	    print e
+	## XXX: not sure why setZone was needed here:
+#	try:
+#	    self.switcher.setZone(name, None)
+#	except FirewallException, e:
+#	    print e
 
 class Timer:
 
