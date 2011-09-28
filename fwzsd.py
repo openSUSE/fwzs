@@ -32,6 +32,8 @@ import gettext
 
 TIMEOUT = 60
 
+timer = None
+
 def N_(x): return x
 
 class FirewallException(dbus.DBusException):
@@ -90,33 +92,27 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
 			dbus_interface='org.freedesktop.DBus',
 			signal_name='NameOwnerChanged')
-	self.timeout = None
 	self.mainloop = None
 	self.clients = {}
 
     def _add_client(self, sender):
-	if self.timeout:
-	    gobject.source_remove(self.timeout)
-	    self.timeout = None
-	self.clients[sender] = 1
+	if (not sender in self.clients):
+	    print "add client %s"%sender
+	    self.clients[sender] = 1
+	    self._update_timeout()
+
+    def _remove_client(self, sender):
+	if (sender in self.clients):
+	    print "remove client %s"%sender
+	    del self.clients[sender]
+	    self._update_timeout()
 
     def _update_timeout(self,):
-	if not self.mainloop:
-	    return
-	if self.timeout:
-	    gobject.source_remove(self.timeout)
-	self.timeout = gobject.timeout_add(TIMEOUT * 1000, self._goodbye)
+	global timer
+	timer.inhibit("dbusiface", len(self.clients) != 0)
 
     def set_mainloop(self, l):
 	self.mainloop = l
-
-    def _goodbye(self):
-	if len(self.clients):
-	    print "clients != 0. Should not happen!", self.clients
-	    return
-	print "exit due to timeout"
-	self.mainloop.quit()
-	return False
 
     @dbus.service.method(interface,
                          in_signature='', out_signature='a{sa{ss}}', sender_keyword='sender')
@@ -169,9 +165,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 
     def nameowner_changed_handler(self, name, old, new):
 	if not new and old in self.clients:
-	    del self.clients[old]
-	    if len(self.clients) == 0:
-		self._update_timeout()
+	    self._remove_client(old)
 	self.impl.nameowner_changed_handler(name, old, new)
 
     def _check_polkit(self, sender, action, return_cb, error_cb, func, *args ):
@@ -375,7 +369,8 @@ class NMWatcher:
 	if name != 'org.freedesktop.NetworkManager':
 	    return
 	
-	self.check_status()
+	off = old and not new
+	self.check_status(off)
 
     def device_add_rm(self, device, added, sender=None, **kwargs):
 	if (added):
@@ -415,15 +410,23 @@ class NMWatcher:
 
 	self.devuuid[name] = uuid
 
-    def check_status(self):
-	running = self.running
-	if (not self.manager):
-	    try:
-		self.proxy = self.bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
-		self.manager = manager = dbus.Interface(self.proxy, "org.freedesktop.NetworkManager")
-		running = True
-	    except dbus.DBusException, e:
-		running = False
+    def _connect_nm(self):
+	try:
+	    self.proxy = self.bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+	    self.manager = manager = dbus.Interface(self.proxy, "org.freedesktop.NetworkManager")
+	    running = True
+	except dbus.DBusException, e:
+	    running = False
+
+	return running
+
+    def check_status(self, force_off=False):
+	if (force_off):
+	    running = False
+	else:
+	    running = self.running
+	    if (not self.manager):
+		running = self._connect_nm()
 
 	if (running):
 	    if (not self.running):
@@ -437,6 +440,8 @@ class NMWatcher:
 
 	self.running = running
 	print "NM Running: ", self.running
+	global timer
+	timer.inhibit("nm", running)
 	return
 
     def activeconn_get_uuid(self, path):
@@ -472,8 +477,49 @@ class NMWatcher:
 	except FirewallException, e:
 	    print e
 
+class Timer:
+
+    def __init__(self, mainloop):
+	self.timeout = None
+	self.mainloop = mainloop
+	self.inhibitors = {}
+
+	self._start()
+
+    def inhibit(self, who, doit):
+	if (doit):
+	    self.inhibitors[who] = 1
+	    print "inhibitor %s added"%who
+	elif (who in self.inhibitors):
+	    del self.inhibitors[who]
+	    print "inhibitor %s removed"%who
+
+	if len(self.inhibitors) == 0:
+	    self._start()
+	else:
+	    if self.timeout:
+		gobject.source_remove(self.timeout)
+		print "timer deleted"
+
+    def _start(self):
+	    if self.timeout:
+		gobject.source_remove(self.timeout)
+	    self.timeout = gobject.timeout_add(TIMEOUT * 1000, self._goodbye)
+	    print "new timer installed"
+
+    def _goodbye(self):
+	if len(self.inhibitors):
+	    print "inhibitors != 0. Should not happen!", self.inhibitors
+	    return True
+	print "exit due to timeout"
+	self.mainloop.quit()
+	return False
+
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+    mainloop = gobject.MainLoop()
+
+    timer = Timer(mainloop)
 
     bus = dbus.SystemBus()
     name = dbus.service.BusName("org.opensuse.zoneswitcher", bus)
@@ -482,7 +528,6 @@ if __name__ == '__main__':
 
     nm = NMWatcher(switcher)
 
-    mainloop = gobject.MainLoop()
     object.set_mainloop(mainloop)
     mainloop.run()
 
