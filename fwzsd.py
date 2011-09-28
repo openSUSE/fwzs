@@ -252,15 +252,20 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	# check user supplied strings
 	if not interface in self._listiterfaces():
 	    raise FirewallException("specified interface is invalid")
-	if not zone in self._listzones():
+	if zone and not zone in self._listzones():
 	    raise FirewallException("specified zone is invalid")
 
 	dir = self.IFACEOVERRIDEDIR+'/'+interface
 	if not os.access(dir, os.F_OK):
 	    os.makedirs(dir)
-	f = open(dir+'/zone', 'w')
-	print >>f, zone
-	f.close()
+	file = dir+'/zone'
+	if (zone):
+	    f = open(file, 'w')
+	    print >>f, zone
+	    f.close()
+	else:
+	    if os.access(file, os.F_OK):
+		os.unlink(file)
 	return True
 
     def Run(self, sender=None):
@@ -273,18 +278,209 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     def Status(self, sender=None):
 	try:
-	    if(subprocess.call(['/sbin/SuSEfirewall2', 'status']) == 0):
+	    #n = open('/dev/null', 'w')
+	    #if(subprocess.call(['/sbin/SuSEfirewall2', 'status'], stdout=n, stderr=n) == 0):
+	    if (os.access(self.STATUSDIR, os.F_OK)):
 		return True
 	    return False
-	except:
+	except Exception, e:
+	    print e
 	    raise FirewallException("SuSEfirewall2 status unknown")
+
+
+class NMWatcher:
+
+    DEVSTATES = {
+	      0: 'UNKNOWN',
+	     10: 'UNMANAGED',
+	     20: 'UNAVAILABLE',
+	     30: 'DISCONNECTED',
+	     40: 'PREPARE',
+	     50: 'CONFIG',
+	     60: 'NEED_AUTH',
+	     70: 'IP_CONFIG',
+	     80: 'IP_CHECK',
+	     90: 'SECONDARIES',
+	    100: 'ACTIVATED',
+	    110: 'DEACTIVATING',
+	    120: 'FAILED',
+	    }
+
+    STATEDIR = "/var/lib/zoneswitcher"
+
+    def __init__(self, switcher):
+	self.bus = dbus.SystemBus()
+	self.proxy = None
+	self.manager = None
+	self.running = False
+	self.devuuid = {} # devname => uuid
+	self.zones = {} # uuid => zone
+	self.switcher = switcher
+
+	self.readstate()
+
+	self.check_status()
+
+	self.bus.add_signal_receiver(
+	    lambda name, old, new: self.nameowner_changed_handler(name, old, new),
+		dbus_interface='org.freedesktop.DBus',
+		signal_name='NameOwnerChanged')
+
+	self.bus.add_signal_receiver(
+	    lambda device, **kwargs: self.device_add_rm(device, True, **kwargs),
+		dbus_interface = 'org.freedesktop.NetworkManager',
+		signal_name = 'DeviceAdded',
+		sender_keyword = 'sender')
+
+	self.bus.add_signal_receiver(
+	    lambda device, **kwargs: self.device_add_rm(device, False, **kwargs),
+		dbus_interface = 'org.freedesktop.NetworkManager',
+		signal_name = 'DeviceRemoved',
+		sender_keyword = 'sender')
+
+	if not os.access(self.STATEDIR, os.F_OK):
+	    os.makedirs(self.STATEDIR)
+
+    def cleanup(self):
+	self.switcher = None
+
+    def savestate(self):
+	print "save state"
+	file = self.STATEDIR + "/nmwatcher.zones"
+	f = open(file, 'w')
+	for uuid in self.zones.keys():
+	    print >>f, "%s %s"%(uuid, self.zones[uuid])
+	f.close()
+
+    def readstate(self):
+	print "read state"
+	file = self.STATEDIR + "/nmwatcher.zones"
+	f = open(file, 'r')
+	if (f):
+	    line = f.readline()
+	    while(line):
+		a = line.split('\n')[0].split(' ')
+		if (len(a) == 2):
+		    print "%s -> %s"%(a[0], a[1])
+		    self.zones[a[0]] = a[1]
+		line = f.readline()
+	    f.close()
+
+    def devstate2name(self, state):
+	if state in self.DEVSTATES:
+	    return self.DEVSTATES[state]
+	return "UNKNOWN:%s"%state
+
+    def nameowner_changed_handler(self, name, old, new):
+	if name != 'org.freedesktop.NetworkManager':
+	    return
+	
+	self.check_status()
+
+    def device_add_rm(self, device, added, sender=None, **kwargs):
+	if (added):
+	    self.watch_device(device)
+	else:
+	    # it's gone, so we can't ask it anymore. We'd need to store a hash
+	    # to the iface name ourselves...
+	    print "device %s removed"%device
+
+    def device_state_changed_handler(self, props, name, new, old, reason, **kwargs):
+	uuid = None
+	try:
+	    conn_path = props.Get("org.freedesktop.NetworkManager.Device", "ActiveConnection")
+	    uuid = self.activeconn_get_uuid(conn_path)
+	except dbus.DBusException, e:
+	    pass
+	print "dev %s changed %s -> %s (uuid: %s)" % (name, self.devstate2name(old), self.devstate2name(new), uuid)
+	if (not name in self.devuuid or self.devuuid[name] != uuid):
+	    try:
+		z = None
+		if (uuid and uuid in self.zones):
+		    z = self.zones[uuid]
+		print "resetting zone to %s" % z
+		self.switcher.setZone(name, z)
+		if (self.switcher.Status()):
+		    self.switcher.Run()
+	    except FirewallException, e:
+		print e
+
+	if (uuid):
+	    z = self.switcher._get_zone(name)
+	    if (z and z != ""):
+		print "saved zone %s for %s"%(z, uuid)
+		self.zones[uuid] = z
+
+	self.savestate()
+
+	self.devuuid[name] = uuid
+
+    def check_status(self):
+	running = self.running
+	if (not self.manager):
+	    try:
+		self.proxy = self.bus.get_object("org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager")
+		self.manager = manager = dbus.Interface(self.proxy, "org.freedesktop.NetworkManager")
+		running = True
+	    except dbus.DBusException, e:
+		running = False
+
+	if (running):
+	    if (not self.running):
+		devices = self.manager.GetDevices()
+		for d in devices:
+		    self.watch_device(d)
+
+	if (not running):
+	    self.proxy = self.manager = None
+	    self.devices = None
+
+	self.running = running
+	print "NM Running: ", self.running
+	return
+
+    def activeconn_get_uuid(self, path):
+	try:
+	    if (path != '/'):
+		conn = self.bus.get_object("org.freedesktop.NetworkManager", path)
+		return conn.Get( "org.freedesktop.NetworkManager.Connection.Active", "Uuid",
+			dbus_interface="org.freedesktop.DBus.Properties")
+	except dbus.DBusException, e:
+	    pass
+	return None
+
+    def watch_device(self, d):
+	dev = self.bus.get_object("org.freedesktop.NetworkManager", d)
+	props = dbus.Interface(dev, "org.freedesktop.DBus.Properties")
+	name = props.Get("org.freedesktop.NetworkManager.Device", "Interface")
+	state = props.Get("org.freedesktop.NetworkManager.Device", "State")
+	conn_path = props.Get("org.freedesktop.NetworkManager.Device", "ActiveConnection")
+
+	uuid = self.activeconn_get_uuid(conn_path)
+
+	self.devuuid[name] = uuid
+
+	print "Watching %s, state %s, uuid %s" % (name, self.devstate2name(state), uuid)
+	# XXX save return value and remove receiver if device goes away?
+	self.bus.add_signal_receiver(
+		lambda new, old, reason, **kwargs: self.device_state_changed_handler(props, name, new, old, reason, **kwargs),
+		    dbus_interface = 'org.freedesktop.NetworkManager.Device',
+		    signal_name = 'StateChanged',
+		    path = d, sender_keyword = 'sender')
+	try:
+	    self.switcher.setZone(name, None)
+	except FirewallException, e:
+	    print e
 
 if __name__ == '__main__':
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
     bus = dbus.SystemBus()
     name = dbus.service.BusName("org.opensuse.zoneswitcher", bus)
-    object = ZoneSwitcherDBUS(ZoneSwitcherSuSEfirewall2(), bus, '/org/opensuse/zoneswitcher0')
+    switcher = ZoneSwitcherSuSEfirewall2()
+    object = ZoneSwitcherDBUS(switcher, bus, '/org/opensuse/zoneswitcher0')
+
+    nm = NMWatcher(switcher)
 
     mainloop = gobject.MainLoop()
     object.set_mainloop(mainloop)
