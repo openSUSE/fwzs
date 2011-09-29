@@ -34,6 +34,18 @@ import dbus.mainloop.glib
 import gettext
 import locale
 
+def N_(x):
+    return x
+
+APPNAME = N_("Firewall Zone Switcher")
+
+_can_notify = False
+try:
+    import pynotify
+    _can_notify = True
+except Exception, e:
+    print e
+
 gettext.install('fwzsapp')
 
 icon_green = ICONDIR + '/firewall.png'
@@ -177,7 +189,7 @@ class ChangeZoneDialog:
     def __init__(self, parent, app, iface):
 	self.app = app
 	self.selection = None
-	zones = app.iface.Zones()
+	zones = app.zones
 	ifaces = app.iface.Interfaces()
 	if not zones or not ifaces:
 	    app.error_dialog(_("Can't get list of interfaces or zones"))
@@ -292,7 +304,7 @@ class StatusIcon:
 	    menu.append(item)
 	
 	else:
-	    zones = self.app.iface.Zones()
+	    zones = self.app.zones
 
 	    if zones and self.app.running == True:
 		ifaces = self.app.iface.Interfaces()
@@ -360,10 +372,9 @@ class OverviewDialog:
 	closebutton = gtk.STOCK_QUIT
 	self.content = None
 	self.ifaces = None
-	self.zones = None
 	if app.icon.isshown():
 	    closebutton = gtk.STOCK_CLOSE
-	dialog = gtk.Dialog(_("Firewall Zone Switcher"), None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
+	dialog = gtk.Dialog(_(APPNAME), None, 0, ( closebutton, gtk.RESPONSE_CANCEL ))
 	dialog.set_default_size(400, 250)
 	dialog.set_icon_from_file(icon_green)
 
@@ -387,13 +398,7 @@ class OverviewDialog:
 	    w = gtk.Label(txt_service_not_running)
 	    vbox.pack_start(w)
 	else:
-	    try:
-		self.zones = self.app.iface.Zones()
-	    except Exception, e:
-		print e
-		pass
-
-	    if not self.zones or not self.app.running:
+	    if not self.app.zones or not self.app.running:
 		vbox.set_border_width(6)
 		vbox.set_spacing(6)
 		if self.app.running == True:
@@ -417,14 +422,9 @@ class OverviewDialog:
 			vbox.pack_start(w, False, False)
 
 	return vbox
-
+    
     def make_label(self, i, z):
-	if z:
-	    if 'desc' in self.zones[z] and self.zones[z]['desc'] != '':
-		z = self.zones[z]['desc']
-	else:
-	    z = _("Unknown")
-	txt = '%s - %s' % (i, z)
+	txt = '%s - %s' % (i, self.app.zone_get_desc(z))
 	return txt
 
     def zone_changed(self, iface, zone):
@@ -447,7 +447,7 @@ class OverviewDialog:
 	h = gtk.HBox()
 	i = gtk.image_new_from_file(self.app.icon.iconfile)
 	i.set_alignment(1, 0.5)
-	l = gtk.Label(_("Firewall Zone Switcher"))
+	l = gtk.Label(_(APPNAME))
 	l.set_alignment(0, 0.5)
 	h.pack_start(i, True, True)
 	h.pack_start(l, True, True)
@@ -491,6 +491,8 @@ class fwzsApp:
 	self.overview_dialog = None
 	self.running = None;
 	self.signalreceivers = []
+	self.notify_initialized =  False
+	self.zones = {}
 
 	if delay:
 	    glib.timeout_add_seconds(delay, self.startup_timer)
@@ -502,11 +504,20 @@ class fwzsApp:
 
 	if not trayonly:
 	    self.overview_dialog = OverviewDialog(self)
-
+	
     def startup_timer(self):
 	if not self.bus:
 	    self.check_status()
 	return False
+
+    def zone_get_desc(self, z):
+	if z:
+	    if 'desc' in self.zones[z] and self.zones[z]['desc'] != '':
+		z = self.zones[z]['desc']
+	else:
+	    z = _("Unknown")
+
+	return z
 
     def nameowner_changed_handler(self, name, old, new):
 	if name != 'org.opensuse.zoneswitcher':
@@ -540,6 +551,23 @@ class fwzsApp:
 	print "got zone change: ", iface, zone
 	if self.overview_dialog:
 	    self.overview_dialog.zone_changed(iface, zone)
+	else:
+	    try:
+		global _can_notify
+		if not self.notify_initialized:
+		    if not pynotify.init(_(APPNAME)):
+			_can_notify = False
+		if _can_notify and zone and zone != "":
+		    n = pynotify.Notification(
+			_("%s now in zone '%s'")%(iface, self.zone_get_desc(zone)),
+			None,
+			"file://"+os.path.abspath(icon_green))
+		    n.set_urgency(pynotify.URGENCY_LOW)
+		    n.set_category("network")
+		    n.set_hint_string("desktop-entry", "fwzsapp")
+		    n.show()
+	    except Exception, e:
+		print e
 
     def _has_run_received(self):
 	print "got HasRun"
@@ -607,6 +635,8 @@ class fwzsApp:
 		l = locale.getlocale(locale.LC_MESSAGES)
 		if l[0]:
 		    self.iface.setLang(l[0])
+
+		self.zones = self.iface.Zones()
 
 		self._connect_signals(self.obj.bus_name)
 
