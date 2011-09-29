@@ -417,8 +417,9 @@ class NMWatcher(gobject.GObject):
 	    try:
 		if uuid in self.zones:
 		    z = self.zones[uuid]
-		    self.switcher.setZone(name, z)
-		    didsomething = True
+		    if z != self.switcher._get_zone(name):
+			self.switcher.setZone(name, z)
+			didsomething = True
 	    except FirewallException, e:
 		print e
 
