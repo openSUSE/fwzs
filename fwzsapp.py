@@ -617,6 +617,7 @@ class fwzsApp:
 
 		self.bus.add_signal_receiver(
 			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
+			bus_name='org.freedesktop.DBus',
 			dbus_interface='org.freedesktop.DBus',
 			signal_name='NameOwnerChanged')
 

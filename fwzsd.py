@@ -107,6 +107,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	impl.connect('HasRun', lambda obj: self._has_run_received())
 	self._connection.add_signal_receiver(
 			lambda name, old, new: self.nameowner_changed_handler(name, old, new),
+			bus_name='org.freedesktop.DBus',
 			dbus_interface='org.freedesktop.DBus',
 			signal_name='NameOwnerChanged')
 	self.mainloop = None
@@ -286,9 +287,9 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
     def setZone(self, interface, zone, sender=None):
 	# check user supplied strings
 	if not interface in self._listiterfaces():
-	    raise FirewallException("specified interface is invalid")
+	    raise FirewallException(_("specified interface is invalid"))
 	if zone and not zone in self._listzones():
-	    raise FirewallException("specified zone is invalid")
+	    raise FirewallException(_("specified zone is invalid"))
 
 	dir = self.IFACEOVERRIDEDIR+'/'+interface
 	if not os.access(dir, os.F_OK):
@@ -368,17 +369,20 @@ class NMWatcher(gobject.GObject):
 
 	self.bus.add_signal_receiver(
 	    lambda name, old, new: self.nameowner_changed_handler(name, old, new),
+		bus_name='org.freedesktop.DBus',
 		dbus_interface='org.freedesktop.DBus',
 		signal_name='NameOwnerChanged')
 
 	self.bus.add_signal_receiver(
 	    lambda device, **kwargs: self.device_add_rm(device, True, **kwargs),
+		bus_name='org.freedesktop.NetworkManager',
 		dbus_interface = 'org.freedesktop.NetworkManager',
 		signal_name = 'DeviceAdded',
 		sender_keyword = 'sender')
 
 	self.bus.add_signal_receiver(
 	    lambda device, **kwargs: self.device_add_rm(device, False, **kwargs),
+		bus_name='org.freedesktop.NetworkManager',
 		dbus_interface = 'org.freedesktop.NetworkManager',
 		signal_name = 'DeviceRemoved',
 		sender_keyword = 'sender')
@@ -565,6 +569,7 @@ class NMWatcher(gobject.GObject):
 	print "Watching %s, state %s, uuid %s" % (name, self.devstate2name(state), uuid)
 	self.devicewatchers[d] = self.bus.add_signal_receiver(
 		lambda new, old, reason, **kwargs: self.device_state_changed_handler(props, name, new, old, reason, **kwargs),
+		    bus_name='org.freedesktop.NetworkManager',
 		    dbus_interface = 'org.freedesktop.NetworkManager.Device',
 		    signal_name = 'StateChanged',
 		    path = d, sender_keyword = 'sender')
@@ -626,6 +631,9 @@ class Timer:
 	return False
 
 if __name__ == '__main__':
+
+    gettext.install('fwzsd')
+
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     mainloop = gobject.MainLoop()
 
