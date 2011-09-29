@@ -249,7 +249,10 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     def _listiterfaces(self):
 	try:
-	    return os.listdir(self.STATUSDIR + '/interfaces')
+	    # consider all system devices valid as SuSEfirewall2 may not know
+	    # about all yet
+	    return [ d for d in os.listdir("/sys/class/net/") if d != 'lo' and d != 'sit0' ]
+	    #return os.listdir(self.STATUSDIR + '/interfaces')
 	except:
 	    return []
 
