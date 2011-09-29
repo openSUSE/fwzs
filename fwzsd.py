@@ -36,6 +36,11 @@ timer = None
 
 def N_(x): return x
 
+_debug_level = 0
+def debug(level, msg):
+    if (level <= _debug_level):
+	print level, msg
+
 class FirewallException(dbus.DBusException):
     _dbus_error_name = 'org.opensuse.zoneswitcher.FirewallException'
 
@@ -115,13 +120,13 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 
     def _add_client(self, sender):
 	if (not sender in self.clients):
-	    print "add client %s"%sender
+	    debug(1, "add client %s"%sender)
 	    self.clients[sender] = 1
 	    self._update_timeout()
 
     def _remove_client(self, sender):
 	if (sender in self.clients):
-	    print "remove client %s"%sender
+	    debug(1,"remove client %s"%sender)
 	    del self.clients[sender]
 	    self._update_timeout()
 
@@ -194,11 +199,11 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 	    return
 	if not zone:
 	    zone = ''
-	print "DBUS: forwarding ZoneChanged(%s, %s)"%(iface, zone)
+	debug(1,"DBUS: forwarding ZoneChanged(%s, %s)"%(iface, zone))
 	self.ZoneChanged(iface, zone)
 
     def _has_run_received(self):
-	print "DBUS: forwarding HasRun()"
+	debug(1,"DBUS: forwarding HasRun()")
 	self.HasRun()
 
     def nameowner_changed_handler(self, name, old, new):
@@ -394,7 +399,7 @@ class NMWatcher(gobject.GObject):
 	self.switcher = None
 
     def savestate(self):
-	print "save state"
+	debug(1,"save state")
 	file = self.STATEDIR + "/nmwatcher.zones"
 	f = open(file, 'w')
 	for uuid in self.zones.keys():
@@ -402,7 +407,7 @@ class NMWatcher(gobject.GObject):
 	f.close()
 
     def readstate(self):
-	print "read state"
+	debug(1,"read state")
 	file = self.STATEDIR + "/nmwatcher.zones"
 	if not os.access(file, os.F_OK):
 	    return
@@ -412,7 +417,7 @@ class NMWatcher(gobject.GObject):
 	    while(line):
 		a = line.split('\n')[0].split(' ')
 		if (len(a) == 2):
-		    print "%s -> %s"%(a[0], a[1])
+		    debug(1,"%s -> %s"%(a[0], a[1]))
 		    self.zones[a[0]] = a[1]
 		line = f.readline()
 	    f.close()
@@ -449,7 +454,7 @@ class NMWatcher(gobject.GObject):
 	if (added):
 	    self.watch_device(device)
 	else:
-	    print "device %s removed"%device
+	    debug(1,"device %s removed"%device)
 	    if (device in self.devicewatchers):
 		self.devicewatchers[device].remove()
 		del self.devicewatchers[device]
@@ -461,13 +466,13 @@ class NMWatcher(gobject.GObject):
 	    uuid = self.activeconn_get_uuid(conn_path)
 	except dbus.DBusException, e:
 	    pass
-	print "%s: state change %s -> %s" % (name, self.devstate2name(old), self.devstate2name(new))
+	debug(1,"%s: state change %s -> %s" % (name, self.devstate2name(old), self.devstate2name(new)))
 	needchange = False
 	if (not name in self.devuuid):
-	    print "%s: new uuid %s"%(name, uuid)
+	    debug(1,"%s: new uuid %s"%(name, uuid))
 	    needchange = True
 	elif (self.devuuid[name] != uuid):
-	    print "%s: uuid change %s -> %s"%(name, self.devuuid[name], uuid)
+	    debug(1,"%s: uuid change %s -> %s"%(name, self.devuuid[name], uuid))
 	    needchange = True
 	    # save previously used zone in case it changed
 	    if self.devuuid[name]:
@@ -479,7 +484,7 @@ class NMWatcher(gobject.GObject):
 		z = None
 		if (uuid and uuid in self.zones):
 		    z = self.zones[uuid]
-		print "%s: setting zone to %s"%(name, z)
+		debug(1,"%s: setting zone to %s"%(name, z))
 		self.switcher.setZone(name, z)
 		if (self.switcher.Status()):
 		    self.switcher.Run()
@@ -493,13 +498,13 @@ class NMWatcher(gobject.GObject):
 
     def check_and_save(self, name, uuid):
 	    if not uuid:
-		print "BUG: check_and_save called with None uuid"
+		debug(1,"BUG: check_and_save called with None uuid")
 		return
 	    z = self.switcher._get_zone(name)
 	    if (z == ""):
 		z = None
 	    if (z and (not uuid in self.zones or self.zones[uuid] != z)):
-		print "%s: new zone %s"%(uuid, z)
+		debug(1,"%s: new zone %s"%(uuid, z))
 		self.zones[uuid] = z
 		self.savestate()
 
@@ -535,7 +540,7 @@ class NMWatcher(gobject.GObject):
 	    self.devicewatchers = {}
 
 	self.running = running
-	print "NM Running: ", self.running
+	debug(1,"NM Running: %s"%self.running)
 	global timer
 	timer.inhibit("nm", running)
 	return
@@ -566,7 +571,7 @@ class NMWatcher(gobject.GObject):
 
 	self.devuuid[name] = uuid
 
-	print "Watching %s, state %s, uuid %s" % (name, self.devstate2name(state), uuid)
+	debug(1,"Watching %s, state %s, uuid %s" % (name, self.devstate2name(state), uuid))
 	self.devicewatchers[d] = self.bus.add_signal_receiver(
 		lambda new, old, reason, **kwargs: self.device_state_changed_handler(props, name, new, old, reason, **kwargs),
 		    bus_name='org.freedesktop.NetworkManager',
@@ -581,11 +586,11 @@ class NMWatcher(gobject.GObject):
     def _zone_changed_receive(self, iface, zone):
 	if not iface:
 	    return
-	print "zone change on %s, marking dirty"%iface
+	debug(1,"zone change on %s, marking dirty"%iface)
 	self.ifacedirty[iface] = 1
 
     def _has_run_received(self):
-	print "has run received"
+	debug(1,"has run received")
 	if len(self.ifacedirty):
 	    for name in self.ifacedirty.keys():
 		if self.devuuid[name]:
@@ -604,33 +609,44 @@ class Timer:
     def inhibit(self, who, doit):
 	if (doit):
 	    self.inhibitors[who] = 1
-	    print "inhibitor %s added"%who
+	    debug(1,"inhibitor %s added"%who)
 	elif (who in self.inhibitors):
 	    del self.inhibitors[who]
-	    print "inhibitor %s removed"%who
+	    debug(1,"inhibitor %s removed"%who)
 
 	if len(self.inhibitors) == 0:
 	    self._start()
 	else:
 	    if self.timeout:
 		gobject.source_remove(self.timeout)
-		print "timer deleted"
+		debug(1,"timer deleted")
 
     def _start(self):
 	    if self.timeout:
 		gobject.source_remove(self.timeout)
 	    self.timeout = gobject.timeout_add(TIMEOUT * 1000, self._goodbye)
-	    print "new timer installed"
+	    debug(1,"new timer installed")
 
     def _goodbye(self):
 	if len(self.inhibitors):
-	    print "inhibitors != 0. Should not happen!", self.inhibitors
+	    debug(1,"inhibitors != 0. Should not happen!", self.inhibitors)
 	    return True
-	print "exit due to timeout"
+	debug(1,"exit due to timeout")
 	self.mainloop.quit()
 	return False
 
 if __name__ == '__main__':
+
+    from optparse import OptionParser
+
+    parser = OptionParser(usage="%prog [options]")
+    parser.add_option('--debug', dest="debug", metavar='N',
+	    action='store', type='int', default=0,
+	    help="debug level")
+
+    (opts, args) = parser.parse_args()
+    if opts.debug:
+	_debug_level = opts.debug
 
     gettext.install('fwzsd')
 

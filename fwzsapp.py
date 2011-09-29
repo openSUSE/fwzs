@@ -34,8 +34,12 @@ import dbus.mainloop.glib
 import gettext
 import locale
 
-def N_(x):
-    return x
+def N_(x): return x
+
+_debug_level = 0
+def debug(level, msg):
+    if (level <= _debug_level):
+	print level, msg
 
 APPNAME = N_("Firewall Zone Switcher")
 
@@ -232,7 +236,7 @@ class ChangeZoneDialog:
 	    return
 
 	if not self.selection:
-	    print "error: no active item"
+	    debug(1,"error: no active item")
 
 	self.app.set_zone(self.selection[0], self.selection[1])
 
@@ -548,7 +552,7 @@ class fwzsApp:
 	    self.signalreceivers.append(sig)
 
     def _zone_changed_receive(self, iface, zone):
-	print "got zone change: ", iface, zone
+	debug(1,"got zone change: %s -> %s"%(iface, zone))
 	if self.overview_dialog:
 	    self.overview_dialog.zone_changed(iface, zone)
 	else:
@@ -570,7 +574,7 @@ class fwzsApp:
 		print e
 
     def _has_run_received(self):
-	print "got HasRun"
+	debug(1,"got HasRun")
 	if self.overview_dialog:
 	    self.overview_dialog.set_contents()
 
@@ -579,7 +583,7 @@ class fwzsApp:
 	print "kwargs: ", kwargs
 
     def bus_disconnected(self):
-	print "bus disconnected"
+	debug(1,"bus disconnected")
 	self.icon.grey()
 
     def check_status(self):
@@ -622,7 +626,7 @@ class fwzsApp:
 			signal_name='NameOwnerChanged')
 
 	    except dbus.DBusException, e:
-		print "can't connect to bus:", str(e)
+		debug(1,"can't connect to bus: %s"%str(e))
 		self.bus = self.obj = self.iface = None
 		return None
 
@@ -645,7 +649,7 @@ class fwzsApp:
 
 	    except dbus.DBusException, e:
 		self.obj = self.iface = None
-		print "can't connect to zoneswitcher:", e
+		debug(1,"can't connect to zoneswitcher: %s"%e)
 		return None
 
 	return self.iface
@@ -720,8 +724,13 @@ if __name__ == '__main__':
     parser.add_option('--delay', dest="delay", metavar='N',
 	    action='store', type='int', default=0,
 	    help="when started in system tray, delay status query N seconds")
+    parser.add_option('--debug', dest="debug", metavar='N',
+	    action='store', type='int', default=0,
+	    help="debug level")
 
     (opts, args) = parser.parse_args()
+    if opts.debug:
+	_debug_level = opts.debug
 
     dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
     app = fwzsApp(trayonly = opts.tray, delay=opts.delay);
