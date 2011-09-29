@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: fwzsapp_de\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-04-27 15:52+0200\n"
+"POT-Creation-Date: 2011-09-29 12:28+0200\n"
 "PO-Revision-Date: 2011-04-27 17:27+0200\n"
 "Last-Translator: Ludwig Nussel <ludwig.nussel@suse.de>\n"
 "Language-Team: German <kde-i18n-de@kde.org>\n"
@@ -21,7 +21,11 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Lokalize 1.2\n"
 
-#: ../fwzsapp.py:46
+#: ../fwzsapp.py:40
+msgid "Firewall Zone Switcher"
+msgstr "Firewall Zonen-Umschalter"
+
+#: ../fwzsapp.py:58
 msgid ""
 "No zones found but Firewall is running.\n"
 "Fwzs is probably not supported."
@@ -29,58 +33,50 @@ msgstr ""
 "Keine Zonen gefunden\n"
 "Fwzs wird möglicherweise nicht unterstützt."
 
-#: ../fwzsapp.py:47
+#: ../fwzsapp.py:59
 msgid "The firewall is not running."
 msgstr "Die Firewall läuft nicht."
 
-#: ../fwzsapp.py:48
+#: ../fwzsapp.py:60
 msgid "zoneswitcher service not running or broken"
 msgstr "zoneswitcher Dienst läuft nicht oder ist kaputt"
 
-#: ../fwzsapp.py:132
+#: ../fwzsapp.py:144
 msgid "Settings"
 msgstr "Einstellungen"
 
-#: ../fwzsapp.py:138
+#: ../fwzsapp.py:150
 msgid "System Tray Icon"
 msgstr "System Tray Icon"
 
-#: ../fwzsapp.py:143
+#: ../fwzsapp.py:155
 msgid "Start on Log-in"
 msgstr "Beim Einloggen starten"
 
-#: ../fwzsapp.py:183
+#: ../fwzsapp.py:195
 msgid "Can't get list of interfaces or zones"
 msgstr "Liste der Schnittstellen kann nicht abgerufen werden"
 
-#: ../fwzsapp.py:186
+#: ../fwzsapp.py:198
 #, python-format
 msgid "Choose Zone for %s"
 msgstr "Zone für %s wählen"
 
-#: ../fwzsapp.py:301
+#: ../fwzsapp.py:313
 msgid "Firewall interfaces"
 msgstr "Firewall Schnittstellen"
 
-#: ../fwzsapp.py:326
+#: ../fwzsapp.py:338
 msgid "No interfaces found."
 msgstr "Keine Schnittstellen gefunden."
 
-#: ../fwzsapp.py:337 ../fwzsapp.py:404
+#: ../fwzsapp.py:349 ../fwzsapp.py:409
 msgid "Run Firewall"
 msgstr "Firewall ausführen"
 
-#: ../fwzsapp.py:346
+#: ../fwzsapp.py:358
 msgid "Quit"
 msgstr "Beenden"
-
-#: ../fwzsapp.py:366 ../fwzsapp.py:450
-msgid "Firewall Zone Switcher"
-msgstr "Firewall Zonen-Umschalter"
-
-#: ../fwzsapp.py:426
-msgid "Unknown"
-msgstr "Unbekannt"
 
 #: ../fwzsapp.py:456
 msgid "Interfaces"
@@ -90,15 +86,23 @@ msgstr "Schnittstellen"
 msgid "Settings..."
 msgstr "Einstellungen..."
 
-#: ../fwzsapp.py:593
+#: ../fwzsapp.py:518
+msgid "Unknown"
+msgstr "Unbekannt"
+
+#: ../fwzsapp.py:562
+#, python-format
+msgid "%s now in zone '%s'"
+msgstr "%s jetzt in Zone '%s'"
+
+#: ../fwzsapp.py:650
 msgid "Firewall Error"
 msgstr "Firewall Fehler"
 
-#: ../fwzsapp.py:651
+#: ../fwzsapp.py:706
 msgid ""
 "The PolicyKit Authentication Agent is not available.\n"
 "Try installing 'PolicyKit-gnome'."
 msgstr ""
 "Der \"PolicyKit Authentication Agent\" ist nicht verfügbar\n"
 "Versuchen Sie 'PolicyKit-gnome' zu installieren."
-

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-04-27 15:52+0200\n"
+"POT-Creation-Date: 2011-09-29 12:28+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,14 +17,18 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../fwzsd.py:202
-msgid "Trusted"
+#: ../fwzsd.py:224
+msgid "You are not authorized."
 msgstr ""
 
-#: ../fwzsd.py:203
-msgid "DMZ"
+#: ../fwzsd.py:234
+msgid "Private Network"
 msgstr ""
 
-#: ../fwzsd.py:204
-msgid "Untrusted"
+#: ../fwzsd.py:235
+msgid "Something inbetween"
+msgstr ""
+
+#: ../fwzsd.py:236
+msgid "Public Network"
 msgstr ""

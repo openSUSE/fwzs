@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: fwzsd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-04-27 15:52+0200\n"
+"POT-Creation-Date: 2011-09-29 12:28+0200\n"
 "PO-Revision-Date: 2011-04-27 17:29+0200\n"
 "Last-Translator: Ludwig Nussel <ludwig.nussel@suse.de>\n"
 "Language-Team: German <kde-i18n-de@kde.org>\n"
@@ -19,17 +19,30 @@ msgstr ""
 "X-Generator: Lokalize 1.2\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ../fwzsd.py:202
-msgid "Trusted"
-msgstr "Vertrauenswürdig"
+#: ../fwzsd.py:224
+msgid "You are not authorized."
+msgstr "Sie sind nicht Authorisiert"
 
-#: ../fwzsd.py:203
-msgid "DMZ"
-msgstr "DMZ"
+#: ../fwzsd.py:234
+msgid "Private Network"
+msgstr "Privates Netz "
 
-#: ../fwzsd.py:204
-msgid "Untrusted"
-msgstr "Nicht Vertrauenswürdig"
+#: ../fwzsd.py:235
+msgid "Something inbetween"
+msgstr "Irgendwas dazwischen"
+
+#: ../fwzsd.py:236
+msgid "Public Network"
+msgstr "Öffentliches Netz "
+
+#~ msgid "Trusted"
+#~ msgstr "Vertrauenswürdig"
+
+#~ msgid "DMZ"
+#~ msgstr "DMZ"
+
+#~ msgid "Untrusted"
+#~ msgstr "Nicht Vertrauenswürdig"
 
 #~ msgid "Not Protected"
 #~ msgstr "Ungeschützt"
@@ -39,9 +52,6 @@ msgstr "Nicht Vertrauenswürdig"
 
 #~ msgid "Protected"
 #~ msgstr "Geschützt"
-
-#~ msgid "Foreign Network"
-#~ msgstr "Fremdes Netz "
 
 #~ msgid "Internet"
 #~ msgstr "Internet"
