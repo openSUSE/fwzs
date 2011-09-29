@@ -438,8 +438,8 @@ class NMWatcher:
 	elif (self.devuuid[name] != uuid):
 	    print "%s: uuid change %s -> %s"%(name, self.devuuid[name], uuid)
 	    needchange = True
-	    if (not uuid): # device went down, save previously used zone
-		self.check_and_save(name, self.devuuid[name])
+	    # save previously used zone in case it changed
+	    self.check_and_save(name, self.devuuid[name])
 
 	if (needchange):
 	    try:
