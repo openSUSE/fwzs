@@ -321,7 +321,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	    raise FirewallException("SuSEfirewall2 status unknown")
 
 
-class NMWatcher:
+class NMWatcher(gobject.GObject):
 
     DEVSTATES = {
 	      0: 'UNKNOWN',
@@ -350,10 +350,14 @@ class NMWatcher:
 	self.zones = {} # uuid => zone
 	self.switcher = switcher
 	self.devicewatchers = {}
+	self.ifacedirty = {} # map of interfaces that have changed zones but no fw run yet
 
 	self.readstate()
 
 	self.check_status()
+
+	switcher.connect('ZoneChanged', lambda obj, iface, zone: self._zone_changed_receive(iface, zone))
+	switcher.connect('HasRun', lambda obj: self._has_run_received())
 
 	self.bus.add_signal_receiver(
 	    lambda name, old, new: self.nameowner_changed_handler(name, old, new),
@@ -439,9 +443,11 @@ class NMWatcher:
 	    print "%s: uuid change %s -> %s"%(name, self.devuuid[name], uuid)
 	    needchange = True
 	    # save previously used zone in case it changed
-	    self.check_and_save(name, self.devuuid[name])
+	    if self.devuuid[name]:
+		self.check_and_save(name, self.devuuid[name])
 
 	if (needchange):
+	    self.devuuid[name] = uuid
 	    try:
 		z = None
 		if (uuid and uuid in self.zones):
@@ -453,12 +459,15 @@ class NMWatcher:
 	    except FirewallException, e:
 		print e
 
-	    if (uuid):
-		self.check_and_save(name, uuid)
+	    #if (uuid):
+		#self.check_and_save(name, uuid)
 
-	    self.devuuid[name] = uuid
+	    #self.devuuid[name] = uuid
 
     def check_and_save(self, name, uuid):
+	    if not uuid:
+		print "BUG: check_and_save called with None uuid"
+		return
 	    z = self.switcher._get_zone(name)
 	    if (z == ""):
 		z = None
@@ -541,6 +550,19 @@ class NMWatcher:
 #	    self.switcher.setZone(name, None)
 #	except FirewallException, e:
 #	    print e
+    def _zone_changed_receive(self, iface, zone):
+	if not iface:
+	    return
+	print "zone change on %s, marking dirty"%iface
+	self.ifacedirty[iface] = 1
+
+    def _has_run_received(self):
+	print "has run received"
+	if len(self.ifacedirty):
+	    for name in self.ifacedirty.keys():
+		if self.devuuid[name]:
+		    self.check_and_save(name, self.devuuid[name])
+	    self.ifacedirty = {}
 
 class Timer:
 
