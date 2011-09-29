@@ -94,6 +94,7 @@ class ZoneSwitcher(gobject.GObject):
     def do_HasRun(self):
 	return
 
+# the DBus interface
 class ZoneSwitcherDBUS(dbus.service.Object):
     """DBUS interface for zone switcher"""
 
@@ -228,6 +229,7 @@ class ZoneSwitcherDBUS(dbus.service.Object):
     def _pk_auth_except(self, error_cb, e):
 	error_cb(e)
 
+# zone switcher implementation for SuSEfirewall2
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     ZONES = {
@@ -627,7 +629,12 @@ if __name__ == '__main__':
 
     bus = dbus.SystemBus()
     name = dbus.service.BusName("org.opensuse.zoneswitcher", bus)
-    switcher = ZoneSwitcherSuSEfirewall2()
+    if os.access("/etc/sysconfig/SuSEfirewall2", os.F_OK):
+	switcher = ZoneSwitcherSuSEfirewall2()
+    else:
+	print "Unsupported Firewall"
+	import sys
+	sys.exit(1)
     object = ZoneSwitcherDBUS(switcher, bus, '/org/opensuse/zoneswitcher0')
 
     nm = NMWatcher(switcher)
