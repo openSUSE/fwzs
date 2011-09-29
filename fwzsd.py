@@ -352,12 +352,14 @@ class NMWatcher(gobject.GObject):
 	self.devicewatchers = {}
 	self.ifacedirty = {} # map of interfaces that have changed zones but no fw run yet
 
+	# XXX: start is probably racy if NM does something here already
 	self.readstate()
-
-	self.check_status()
 
 	switcher.connect('ZoneChanged', lambda obj, iface, zone: self._zone_changed_receive(iface, zone))
 	switcher.connect('HasRun', lambda obj: self._has_run_received())
+
+	self.check_status()
+	self.applystate()
 
 	self.bus.add_signal_receiver(
 	    lambda name, old, new: self.nameowner_changed_handler(name, old, new),
@@ -405,6 +407,21 @@ class NMWatcher(gobject.GObject):
 		    self.zones[a[0]] = a[1]
 		line = f.readline()
 	    f.close()
+    
+    def applystate(self):
+	didsomething = False
+	for name in self.devuuid:
+	    uuid = self.devuuid[name]
+	    try:
+		if uuid in self.zones:
+		    z = self.zones[uuid]
+		    self.switcher.setZone(name, z)
+		    didsomething = True
+	    except FirewallException, e:
+		print e
+
+	if (didsomething and self.switcher.Status()):
+	    self.switcher.Run()
 
     def devstate2name(self, state):
 	if state in self.DEVSTATES:
