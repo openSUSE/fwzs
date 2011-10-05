@@ -250,7 +250,8 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
     def _listzones(self):
 	try:
 	    return os.listdir(self.STATUSDIR + '/zones')
-	except:
+	except Exception, e:
+	    print e
 	    return []
 
     def _listiterfaces(self):
@@ -259,7 +260,8 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 	    # about all yet
 	    return [ d for d in os.listdir("/sys/class/net/") if d != 'lo' and d != 'sit0' ]
 	    #return os.listdir(self.STATUSDIR + '/interfaces')
-	except:
+	except Exception, e:
+	    print e
 	    return []
 
     def Zones(self, sender=None):

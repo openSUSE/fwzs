@@ -575,6 +575,11 @@ class fwzsApp:
 
     def _has_run_received(self):
 	debug(1,"got HasRun")
+	try:
+	    self.zones = self.iface.Zones()
+	except dbus.DBusException, e:
+	    print e
+	    self.zones = {}
 	if self.overview_dialog:
 	    self.overview_dialog.set_contents()
 
