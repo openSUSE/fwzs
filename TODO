@@ -1,7 +1,5 @@
-- watch NetworkManager for connection changes and switch to default
-  automatically
-- also support polkit1
 - properly survive dbus restarts
+- apply status after SuSEfirewall2 has run if run for the first time
 
 Optional:
 - other firewall backends
