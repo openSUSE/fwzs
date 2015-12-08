@@ -257,21 +257,21 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 
     def _firewalld_set_zone_cb(self, dev, name, sender):
 
-	if name == '':
-	    zone = 'ext'
-	for k, v in self.impl.Zones().items():
-	    if v['desc'] == name:
-		debug(1, "'{}' => {}".format(name, k))
-		zone = k
+	zone = None
 
-	if not zone:
-	    print _("specified zone '{}' is invalid").format(zone)
-	    zone = 'ext'
+	# need to get a reverse map name -> zone here
+	d = { v['desc']: k for k, v in self.impl.Zones().items() }
+
+	if not name in d:
+	    if name:
+		print _("specified zone '{}' is invalid").format(name)
+	else:
+	    zone = d[name]
 
 	self.impl.setZone(dev, zone, sender)
 	if (self.impl.Status()):
 	    self.impl.Run()
-	return zone
+	return zone or ''
 
     @dbus.service.method(firewalld_interface,
                          in_signature='ss', out_signature='s',
