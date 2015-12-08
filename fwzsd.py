@@ -2,18 +2,19 @@
 #
 # fwzsd - fwzs daemon
 # Copyright (C) 2009 SUSE LINUX Products GmbH
+# Copyright (C) 2015 SUSE LLC
 #
 # Author:     Ludwig Nussel
-# 
+#
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
 # version 2 as published by the Free Software Foundation.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
@@ -103,10 +104,23 @@ class ZoneSwitcher(gobject.GObject):
 class ZoneSwitcherDBUS(dbus.service.Object):
     """DBUS interface for zone switcher"""
 
-    interface = "org.opensuse.zoneswitcher"
+    SUPPORTS_MULTIPLE_OBJECT_PATHS = True
 
-    def __init__(self, impl, *args):
-	dbus.service.Object.__init__(self, *args) 
+    interface = "org.opensuse.zoneswitcher"
+    firewalld_interface = "org.fedoraproject.FirewallD1.zone"
+
+    def __init__(self, impl):
+	bus = dbus.SystemBus()
+	dbus.service.Object.__init__(self, conn = bus)
+
+	self.names = [
+	    dbus.service.BusName("org.opensuse.zoneswitcher", bus),
+	    dbus.service.BusName("org.fedoraproject.FirewallD1", bus),
+	    ]
+
+	self.add_to_connection(bus, '/org/opensuse/zoneswitcher0')
+	self.add_to_connection(bus, "/org/fedoraproject/FirewallD1")
+
 	self.impl = impl
 	impl.connect('ZoneChanged', lambda obj, iface, zone: self._zone_changed_receive(iface, zone))
 	impl.connect('HasRun', lambda obj: self._has_run_received())
@@ -234,6 +248,75 @@ class ZoneSwitcherDBUS(dbus.service.Object):
 
     def _pk_auth_except(self, error_cb, e):
 	error_cb(e)
+
+    def _firewalld_set_zone(self, dev, name, sender, return_cb, error_cb):
+
+	self._check_polkit(sender, "org.opensuse.zoneswitcher.control",
+		return_cb, error_cb,
+		lambda: self._firewalld_set_zone_cb(dev, name, sender))
+
+    def _firewalld_set_zone_cb(self, dev, name, sender):
+
+	if name == '':
+	    zone = 'ext'
+	for k, v in self.impl.Zones().items():
+	    if v['desc'] == name:
+		debug(1, "'{}' => {}".format(name, k))
+		zone = k
+
+	if not zone:
+	    print _("specified zone '{}' is invalid").format(zone)
+	    zone = 'ext'
+
+	self.impl.setZone(dev, zone, sender)
+	if (self.impl.Status()):
+	    self.impl.Run()
+	return zone
+
+    @dbus.service.method(firewalld_interface,
+                         in_signature='ss', out_signature='s',
+			 sender_keyword='sender',
+			 async_callbacks=('return_cb', 'error_cb'))
+    def addInterface(self, zone, dev, sender, return_cb, error_cb):
+	debug(1, "firewalld addInterface {} -> '{}'".format(dev, zone))
+	self._add_client(sender)
+	self._firewalld_set_zone(dev, zone, sender, return_cb, error_cb)
+	return self.impl.Interfaces()[dev] or None
+
+    @dbus.service.method(firewalld_interface,
+                         in_signature='ss', out_signature='s',
+			 sender_keyword='sender',
+			 async_callbacks=('return_cb', 'error_cb'))
+    def changeZone(self, zone, dev, sender, return_cb, error_cb):
+	return self.changeZoneOfInterface(zone, dev, sender, return_cb, error_cb)
+
+    @dbus.service.method(firewalld_interface,
+                         in_signature='ss', out_signature='s',
+			 sender_keyword='sender',
+			 async_callbacks=('return_cb', 'error_cb'))
+    def changeZoneOfInterface(self, zone, dev, sender, return_cb, error_cb):
+	debug(1, "firewalld changeZoneOfInterface {} -> '{}'".format(dev, zone))
+	self._add_client(sender)
+	self._firewalld_set_zone(dev, zone, sender, return_cb, error_cb)
+	return self.impl.Interfaces()[dev] or None
+
+    @dbus.service.method(firewalld_interface,
+                         in_signature='ss', out_signature='s',
+			 sender_keyword='sender',
+			 async_callbacks=('return_cb', 'error_cb'))
+    def removeInterface(self, zone, dev, sender, return_cb, error_cb):
+	debug(1, "firewalld removeInterface {} -> '{}'".format(dev, zone))
+	self._add_client(sender)
+	z = self.impl.Interfaces()[dev] or None
+	self._firewalld_set_zone(dev, zone, sender, return_cb, error_cb)
+	return z
+
+    @dbus.service.method(firewalld_interface,
+                         in_signature=None, out_signature='as', sender_keyword='sender')
+    def getZones(self, sender):
+	self._add_client(sender)
+	debug(1, "firewalld getZones")
+	return [i['desc'] for i in self.impl.Zones(sender=sender).values()]
 
 # zone switcher implementation for SuSEfirewall2
 class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
@@ -423,7 +506,7 @@ class NMWatcher(gobject.GObject):
 		    self.zones[a[0]] = a[1]
 		line = f.readline()
 	    f.close()
-    
+
     def applystate(self):
 	didsomething = False
 	for name in self.devuuid:
@@ -657,19 +740,18 @@ if __name__ == '__main__':
 
     timer = Timer(mainloop)
 
-    bus = dbus.SystemBus()
-    name = dbus.service.BusName("org.opensuse.zoneswitcher", bus)
     if os.access("/etc/sysconfig/SuSEfirewall2", os.F_OK):
 	switcher = ZoneSwitcherSuSEfirewall2()
     else:
 	print "Unsupported Firewall"
 	import sys
 	sys.exit(1)
-    object = ZoneSwitcherDBUS(switcher, bus, '/org/opensuse/zoneswitcher0')
+
+    dbusinterface = ZoneSwitcherDBUS(switcher)
 
     nm = NMWatcher(switcher)
 
-    object.set_mainloop(mainloop)
+    dbusinterface.set_mainloop(mainloop)
     mainloop.run()
 
 # vim: sw=4 ts=8 noet
