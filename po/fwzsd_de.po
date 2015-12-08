@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: fwzsd\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-09-29 12:28+0200\n"
+"POT-Creation-Date: 2015-12-08 17:42+0800\n"
 "PO-Revision-Date: 2011-04-27 17:29+0200\n"
 "Last-Translator: Ludwig Nussel <ludwig.nussel@suse.de>\n"
 "Language-Team: German <kde-i18n-de@kde.org>\n"
@@ -19,39 +19,30 @@ msgstr ""
 "X-Generator: Lokalize 1.2\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: ../fwzsd.py:224
+#: ../fwzsd.py:245
 msgid "You are not authorized."
 msgstr "Sie sind nicht Authorisiert"
 
-#: ../fwzsd.py:234
+#: ../fwzsd.py:268
+msgid "specified zone '{}' is invalid"
+msgstr "Angegebene Schnittstelle '{}' ist ungültig"
+
+#: ../fwzsd.py:325
 msgid "Private Network"
 msgstr "Privates Netz "
 
-#: ../fwzsd.py:235
-msgid "Something inbetween"
-msgstr "Irgendwas dazwischen"
+#: ../fwzsd.py:326
+msgid "DMZ"
+msgstr "DMZ"
 
-#: ../fwzsd.py:236
+#: ../fwzsd.py:327
 msgid "Public Network"
 msgstr "Öffentliches Netz "
 
-#~ msgid "Trusted"
-#~ msgstr "Vertrauenswürdig"
+#: ../fwzsd.py:380
+msgid "specified interface is invalid"
+msgstr "Angegebene Schnittstelle ist ungültig"
 
-#~ msgid "DMZ"
-#~ msgstr "DMZ"
-
-#~ msgid "Untrusted"
-#~ msgstr "Nicht Vertrauenswürdig"
-
-#~ msgid "Not Protected"
-#~ msgstr "Ungeschützt"
-
-#~ msgid "Partially Protected"
-#~ msgstr "Teilweise Geschützt"
-
-#~ msgid "Protected"
-#~ msgstr "Geschützt"
-
-#~ msgid "Internet"
-#~ msgstr "Internet"
+#: ../fwzsd.py:382
+msgid "specified zone is invalid"
+msgstr "Angegebene Zone ist ungültig"

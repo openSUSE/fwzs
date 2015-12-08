@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-09-29 12:28+0200\n"
+"POT-Creation-Date: 2015-12-08 17:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,18 +17,30 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../fwzsd.py:224
+#: ../fwzsd.py:245
 msgid "You are not authorized."
 msgstr ""
 
-#: ../fwzsd.py:234
+#: ../fwzsd.py:268
+msgid "specified zone '{}' is invalid"
+msgstr ""
+
+#: ../fwzsd.py:325
 msgid "Private Network"
 msgstr ""
 
-#: ../fwzsd.py:235
-msgid "Something inbetween"
+#: ../fwzsd.py:326
+msgid "DMZ"
 msgstr ""
 
-#: ../fwzsd.py:236
+#: ../fwzsd.py:327
 msgid "Public Network"
+msgstr ""
+
+#: ../fwzsd.py:380
+msgid "specified interface is invalid"
+msgstr ""
+
+#: ../fwzsd.py:382
+msgid "specified zone is invalid"
 msgstr ""

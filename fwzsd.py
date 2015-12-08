@@ -323,7 +323,7 @@ class ZoneSwitcherSuSEfirewall2(ZoneSwitcher):
 
     ZONES = {
 	'int': N_('Private Network'),
-	'dmz': N_('Something inbetween'),
+	'dmz': N_('DMZ'),
 	'ext': N_('Public Network'),
     }
 
