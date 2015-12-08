@@ -9,10 +9,13 @@ desktopdata_DATA = fwzsapp.desktop
 
 dbusdatadir = @dbusdatadir@
 dbussystemservicedir = $(dbusdatadir)/system-services
-dbussystemservice_DATA = org.opensuse.zoneswitcher.service
+dbussystemservice_DATA = org.opensuse.zoneswitcher.service org.fedoraproject.FirewallD1.service
 
 dbussystemconfigdir = $(sysconfdir)/dbus-1/system.d
 dbussystemconfig_DATA = org.opensuse.zoneswitcher.conf
+
+systemdservicedir= $(prefix)/lib/systemd/system
+systemdservice_DATA = fwzsd.service
 
 policydir = $(datadir)/PolicyKit/policy
 policy_DATA = org.opensuse.zoneswitcher.policy
@@ -35,17 +38,15 @@ fwzsapp: fwzsapp.py Makefile
 	@$(do_subst_py) $(srcdir)/$< > $@
 	@chmod +x $@
 
-org.opensuse.zoneswitcher.service: org.opensuse.zoneswitcher.service.in Makefile
-	@echo "creating $@"
-	@$(do_subst) $(srcdir)/$< > $@
-
 fwzsapp.desktop: fwzsapp.desktop.in Makefile
 	@echo "creating $@"
 	@$(do_subst) $(srcdir)/$< > $@
 
 CLEANFILES = $(pkgdata_SCRIPTS) $(dbussystemservice_DATA) $(desktopdata_DATA)
 EXTRA_DIST = fwzsd.py fwzsapp.py \
-	     org.opensuse.zoneswitcher.service.in \
+	     fwzsd.service.in \
+	     org.opensuse.zoneswitcher.service \
+	     org.fedoraproject.FirewallD1.service \
 	     fwzsapp.desktop.in \
 	     $(icon_DATA) \
 	     $(pkgdata_DATA) \

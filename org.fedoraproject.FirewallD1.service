@@ -1,0 +1,5 @@
+[D-BUS Service]
+Name=org.fedoraproject.FirewallD1
+Exec=/bin/false
+User=root
+SystemdService=fwzsd.service

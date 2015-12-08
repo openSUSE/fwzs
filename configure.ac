@@ -16,6 +16,7 @@ dbusdatadir="$with_dbusdatadir"
 AC_SUBST(dbusdatadir)
 
 AC_CONFIG_FILES([
+	fwzsd.service
 	Makefile
 	po/Makefile
 ])

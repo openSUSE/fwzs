@@ -1,0 +1,9 @@
+[Unit]
+Description=Firewall Zone Switcher Service
+
+[Service]
+Type=dbus
+BusName=org.opensuse.zoneswitcher
+BusName=org.fedoraproject.FirewallD1
+ExecStart=@sbindir@/fwzsd
+NotifyAccess=main
